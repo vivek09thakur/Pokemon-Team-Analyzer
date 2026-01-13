@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pokémon Team Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-title">
+          <div class="title-decoration left"></div>
+          <h1>Pokémon Team Analyzer</h1>
+          <div class="title-decoration right"></div>
+        </div>
+        <p class="header-subtitle">Build your perfect team. Analyze weaknesses.</p>
+      </header>
+
+      <!-- Main Content -->
+      <div class="main-grid">
+        <!-- Left Column - Team Builder -->
+        <div class="left-column">
+          <div class="card team-builder">
+            <div class="card-header">
+              <div class="header-left">
+                <h2>Build Your Team</h2>
+                <p>Select up to 6 Pokémon</p>
+              </div>
+              <div class="header-right">
+                <span>Team Size:</span>
+                <select id="team-size" class="select-field">
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6" selected>6</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Team Slots -->
+            <div id="team-container" class="team-slots">
+              <!-- Team slots will be generated here -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+              <button id="calculate-btn" class="btn-primary">
+                <span class="material-icons">analytics</span>
+                Analyze
+              </button>
+              <button id="reset-btn" class="btn-secondary">
+                <span class="material-icons">refresh</span>
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div id="results-section" class="hidden">
+            <div class="card analysis">
+              <h2>Team Analysis</h2>
+
+              <!-- Team Sprites -->
+              <div class="team-sprites-section">
+                <div class="section-title">
+                  <div class="icon-wrapper">
+                    <span class="material-icons">groups</span>
+                  </div>
+                  <h3>Team Composition</h3>
+                </div>
+                <div id="team-sprites" class="team-sprites-grid">
+                  <!-- Team sprites will be displayed here -->
+                </div>
+              </div>
+
+              <!-- Analysis Grid -->
+              <div class="analysis-grid">
+                <!-- Coverage -->
+                <div class="analysis-column">
+                  <div class="section-title">
+                    <div class="icon-wrapper">
+                      <span class="material-icons">trending_up</span>
+                    </div>
+                    <h3>Offensive Coverage</h3>
+                  </div>
+                  <div id="coverage-body" class="analysis-list">
+                    <!-- Coverage will be populated here -->
+                  </div>
+                </div>
+
+                <!-- Weaknesses -->
+                <div class="analysis-column">
+                  <div class="section-title">
+                    <div class="icon-wrapper">
+                      <span class="material-icons">warning</span>
+                    </div>
+                    <h3>Defensive Weaknesses</h3>
+                  </div>
+                  <div id="weakness-body" class="analysis-list">
+                    <!-- Weaknesses will be populated here -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Summary -->
+              <div class="summary-section">
+                <div class="section-title">
+                  <div class="icon-wrapper">
+                    <span class="material-icons">insights</span>
+                  </div>
+                  <h3>Team Summary</h3>
+                </div>
+                <div id="summary-points" class="summary-grid">
+                  <!-- Summary points will be added here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - Info Panel -->
+        <div class="right-column">
+          <div class="card info-panel">
+            <div class="section-title">
+              <div class="icon-wrapper">
+                <span class="material-icons">info</span>
+              </div>
+              <h3>How to Use</h3>
+            </div>
+
+            <div class="info-items">
+              <div class="info-item">
+                <span class="material-icons info-icon">search</span>
+                <div>
+                  <h4>Search Pokémon</h4>
+                  <p>Type name to auto-fill types</p>
+                </div>
+              </div>
+
+              <div class="info-item">
+                <span class="material-icons info-icon">group</span>
+                <div>
+                  <h4>Build Team</h4>
+                  <p>Select types or use search</p>
+                </div>
+              </div>
+
+              <div class="info-item">
+                <span class="material-icons info-icon">analytics</span>
+                <div>
+                  <h4>Get Analysis</h4>
+                  <p>Click Analyze to see results</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Type Effectiveness Legend -->
+            <div class="legend-section">
+              <h4>Effectiveness Scale</h4>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <div class="legend-dot immune"></div>
+                  <span>0× (Immune)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot resisted"></div>
+                  <span>0.5× (Resisted)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot normal"></div>
+                  <span>1× (Normal)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot super"></div>
+                  <span>2× (Super)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot double"></div>
+                  <span>4× (Double)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>Pokémon Team Analyzer • Uses PokéAPI • Not affiliated with Nintendo</p>
+      </footer>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
