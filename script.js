@@ -43,28 +43,9 @@ const typeChart = {
 };
 
 let pokemonDataStore = new Map();
-let searchTimeouts = {};
-
-// Better Sprite APIs (choose one or fallback chain)
-const spriteAPIs = [
-    // Official Pokémon Showdown Sprites (HD)
-    (id) => `https://play.pokemonshowdown.com/sprites/xyani/${pokemon.name}.gif`,
-    
-    // Pokémon Home-style Sprites
-    (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
-    
-    // Pokémon Dream World Art
-    (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world/${id}.svg`,
-    
-    // 8-bit Pixel Sprites (retro)
-    (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${id}.gif`,
-    
-    // 3D Models (Gen 8 style)
-    (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`,
-    
-    // Default fallback
-    (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
-];
+let currentSelectedSlot = null;
+let selectedPokemonData = null;
+let searchTimeout = null;
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
@@ -76,10 +57,22 @@ function setupEventListeners() {
     document.getElementById('calculate-btn').addEventListener('click', calculateAnalysis);
     document.getElementById('reset-btn').addEventListener('click', resetTeam);
     document.getElementById('team-size').addEventListener('change', changeTeamSize);
+    document.getElementById('popup-close').addEventListener('click', closePopup);
+    document.getElementById('popup-search').addEventListener('input', handlePopupSearch);
+    document.getElementById('confirm-add-btn').addEventListener('click', confirmAddPokemon);
+    
+    // Close popup on overlay click
+    document.getElementById('popup-overlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closePopup();
+        }
+    });
     
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.key === 'Enter') {
+        if (e.key === 'Escape') {
+            closePopup();
+        } else if (e.ctrlKey && e.key === 'Enter') {
             calculateAnalysis();
         }
     });
@@ -91,84 +84,68 @@ function initializeTeam() {
     teamContainer.innerHTML = '';
     
     for (let i = 0; i < teamSize; i++) {
-        const entry = document.createElement('div');
-        entry.className = 'team-slot';
-        entry.setAttribute('data-slot-index', i);
-        
-        entry.innerHTML = `
-            <div class="team-slot-header">
-                <span class="team-slot-title">Slot ${i + 1}</span>
-                <span class="team-slot-status">Empty</span>
+        const slot = document.createElement('div');
+        slot.className = 'team-slot empty';
+        slot.setAttribute('data-slot-index', i);
+        slot.innerHTML = `
+            <div class="slot-content">
+                <span class="material-icons add-icon">add_circle</span>
+                <span class="slot-label">Add Pokémon</span>
             </div>
-            
-            <div class="search-container">
-                <input type="text" 
-                       class="search-input"
-                       id="name-${i}" 
-                       placeholder="Search Pokémon..."
-                       autocomplete="off">
-                <div class="search-results hidden" id="search-results-${i}"></div>
-            </div>
-            
-            <div class="type-selection">
-                <select class="select-field" 
-                        id="type1-${i}">
-                    ${getTypeOptions('')}
-                </select>
-                <select class="select-field" 
-                        id="type2-${i}">
-                    <option value="">None</option>
-                    ${getTypeOptions('')}
-                </select>
-            </div>
-            
-            <div class="type-badges" id="type-badges-${i}"></div>
         `;
         
-        teamContainer.appendChild(entry);
-        
-        // Add event listeners
-        const nameInput = document.getElementById(`name-${i}`);
-        const type1Select = document.getElementById(`type1-${i}`);
-        const type2Select = document.getElementById(`type2-${i}`);
-        
-        nameInput.addEventListener('input', () => handlePokemonInput(i));
-        nameInput.addEventListener('focus', () => handlePokemonInput(i));
-        type1Select.addEventListener('change', () => updateTypeBadges(i));
-        type2Select.addEventListener('change', () => updateTypeBadges(i));
+        slot.addEventListener('click', () => openPopup(i));
+        teamContainer.appendChild(slot);
     }
 }
 
-function getTypeOptions(selectedType) {
-    let options = '<option value="">Type</option>';
-    for (const typeKey in typeData) {
-        const type = typeData[typeKey];
-        const selected = selectedType === typeKey ? 'selected' : '';
-        options += `<option value="${typeKey}" ${selected}>${type.name}</option>`;
+function openPopup(slotIndex) {
+    // Check if slot already has a Pokémon
+    if (pokemonDataStore.has(slotIndex)) {
+        return;
     }
-    return options;
+    
+    currentSelectedSlot = slotIndex;
+    selectedPokemonData = null;
+    
+    // Reset popup content
+    document.getElementById('popup-search').value = '';
+    document.getElementById('popup-search-results').innerHTML = '';
+    document.getElementById('popup-search-results').classList.add('hidden');
+    document.getElementById('selected-preview').classList.add('hidden');
+    document.getElementById('confirm-add-btn').disabled = true;
+    
+    // Show popup
+    document.getElementById('popup-overlay').classList.remove('hidden');
+    document.getElementById('popup-search').focus();
 }
 
-async function handlePokemonInput(index) {
-    const input = document.getElementById(`name-${index}`);
-    const searchTerm = input.value.trim().toLowerCase();
-    const resultsContainer = document.getElementById(`search-results-${index}`);
+function closePopup() {
+    document.getElementById('popup-overlay').classList.add('hidden');
+    currentSelectedSlot = null;
+    selectedPokemonData = null;
+}
+
+async function handlePopupSearch() {
+    const searchInput = document.getElementById('popup-search');
+    const searchTerm = searchInput.value.trim().toLowerCase();
+    const resultsContainer = document.getElementById('popup-search-results');
     
     if (searchTerm.length < 2) {
         resultsContainer.classList.add('hidden');
+        document.getElementById('selected-preview').classList.add('hidden');
         return;
     }
     
     // Clear previous timeout
-    if (searchTimeouts[index]) {
-        clearTimeout(searchTimeouts[index]);
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
     }
     
     // Debounce search
-    searchTimeouts[index] = setTimeout(async () => {
+    searchTimeout = setTimeout(async () => {
         try {
-            // Show loading
-            resultsContainer.innerHTML = '<div style="padding: 10px; color: var(--text-secondary);">Searching...</div>';
+            resultsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Searching...</div>';
             resultsContainer.classList.remove('hidden');
             
             const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=1000`);
@@ -178,19 +155,19 @@ async function handlePokemonInput(index) {
                 pokemon.name.toLowerCase().includes(searchTerm)
             ).slice(0, 8);
             
-            await displaySearchResults(index, filteredResults);
+            await displaySearchResults(filteredResults);
             
         } catch (error) {
-            resultsContainer.innerHTML = '<div style="padding: 10px; color: var(--error);">Error loading results</div>';
+            resultsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--error);">Error loading results</div>';
         }
     }, 300);
 }
 
-async function displaySearchResults(index, results) {
-    const resultsContainer = document.getElementById(`search-results-${index}`);
+async function displaySearchResults(results) {
+    const resultsContainer = document.getElementById('popup-search-results');
     
     if (results.length === 0) {
-        resultsContainer.innerHTML = '<div style="padding: 10px; color: var(--text-secondary);">No Pokémon found</div>';
+        resultsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No Pokémon found</div>';
         return;
     }
     
@@ -209,7 +186,10 @@ async function displaySearchResults(index, results) {
                      class="search-result-img"
                      loading="lazy">
                 <div class="search-result-info">
-                    <h4>${capitalizeFirstLetter(data.name)} #${data.id}</h4>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <h4>${capitalizeFirstLetter(data.name)}</h4>
+                        <span class="pokemon-id">#${data.id.toString().padStart(3, '0')}</span>
+                    </div>
                     <div class="type-container">
                         ${data.types.map(t => `
                             <span class="type-badge small" style="background-color: ${typeData[t.type.name].color}">
@@ -219,7 +199,8 @@ async function displaySearchResults(index, results) {
                     </div>
                 </div>
             `;
-            resultItem.onclick = () => selectPokemonFromSearch(index, data);
+            
+            resultItem.addEventListener('click', () => selectPokemonFromSearch(data));
             fragment.appendChild(resultItem);
         } catch (error) {
             console.error('Error fetching sprite:', error);
@@ -229,101 +210,109 @@ async function displaySearchResults(index, results) {
     resultsContainer.innerHTML = '';
     resultsContainer.appendChild(fragment);
     resultsContainer.classList.remove('hidden');
+}
+
+function selectPokemonFromSearch(pokemonData) {
+    selectedPokemonData = pokemonData;
     
-    // Close on outside click
-    setTimeout(() => {
-        const closeResults = (e) => {
-            if (!resultsContainer.contains(e.target) && !document.getElementById(`name-${index}`).contains(e.target)) {
-                resultsContainer.classList.add('hidden');
-                document.removeEventListener('click', closeResults);
-            }
-        };
-        document.addEventListener('click', closeResults);
-    }, 100);
+    // Hide search results
+    document.getElementById('popup-search-results').classList.add('hidden');
+    
+    // Show selected preview
+    const preview = document.getElementById('selected-preview');
+    document.getElementById('selected-sprite').src = getBestSprite(pokemonData.id, pokemonData.name);
+    document.getElementById('selected-name').textContent = `${capitalizeFirstLetter(pokemonData.name)} #${pokemonData.id.toString().padStart(3, '0')}`;
+    
+    const typesContainer = document.getElementById('selected-types');
+    typesContainer.innerHTML = pokemonData.types.map(t => `
+        <span class="type-badge" style="background-color: ${typeData[t.type.name].color}">
+            ${typeData[t.type.name].name}
+        </span>
+    `).join('');
+    
+    preview.classList.remove('hidden');
+    document.getElementById('confirm-add-btn').disabled = false;
+    
+    // Scroll to confirm button
+    preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function confirmAddPokemon() {
+    if (!selectedPokemonData || currentSelectedSlot === null) return;
+    
+    pokemonDataStore.set(currentSelectedSlot, selectedPokemonData);
+    updateTeamSlot(currentSelectedSlot, selectedPokemonData);
+    closePopup();
+}
+
+function updateTeamSlot(slotIndex, pokemonData) {
+    const slot = document.querySelector(`.team-slot[data-slot-index="${slotIndex}"]`);
+    if (!slot) return;
+    
+    slot.className = 'team-slot filled';
+    const types = pokemonData.types.map(t => t.type.name);
+    
+    slot.innerHTML = `
+        <button class="remove-btn" onclick="removePokemon(${slotIndex})">
+            <span class="material-icons">close</span>
+        </button>
+        <div class="slot-content">
+            <img src="${getBestSprite(pokemonData.id, pokemonData.name)}" 
+                 alt="${pokemonData.name}" 
+                 class="pokemon-sprite-large">
+            <div class="pokemon-name">${capitalizeFirstLetter(pokemonData.name)}</div>
+            <div class="pokemon-types">
+                ${types.map(type => `
+                    <span class="type-badge small" style="background-color: ${typeData[type].color}">
+                        ${typeData[type].name}
+                    </span>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function removePokemon(slotIndex) {
+    event.stopPropagation(); // Prevent triggering slot click
+    
+    if (confirm('Remove this Pokémon from your team?')) {
+        pokemonDataStore.delete(slotIndex);
+        
+        const slot = document.querySelector(`.team-slot[data-slot-index="${slotIndex}"]`);
+        slot.className = 'team-slot empty';
+        slot.innerHTML = `
+            <div class="slot-content">
+                <span class="material-icons add-icon">add_circle</span>
+                <span class="slot-label">Add Pokémon</span>
+            </div>
+        `;
+        
+        // Re-add click event
+        slot.addEventListener('click', () => openPopup(slotIndex));
+    }
 }
 
 // Function to get the best available sprite
 function getBestSprite(id, name) {
-    // Try different sprite sources in order of preference
+    // Try different sprite sources
     const spriteSources = [
-        // Official artwork (highest quality)
         `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
-        // Home sprites
         `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`,
-        // Dream World art
-        `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world/${id}.svg`,
-        // Default sprite
         `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
-        // Fallback to Pokémon Showdown
         `https://play.pokemonshowdown.com/sprites/ani/${name}.gif`
     ];
     
-    // Return first source (they'll fail gracefully if not available)
     return spriteSources[0];
-}
-
-async function selectPokemonFromSearch(index, pokemonData) {
-    document.getElementById(`search-results-${index}`).classList.add('hidden');
-    pokemonDataStore.set(index, pokemonData);
-    updatePokemonUI(index, pokemonData);
-}
-
-function updatePokemonUI(index, pokemonData) {
-    const nameInput = document.getElementById(`name-${index}`);
-    const slotStatus = nameInput.parentElement.parentElement.querySelector('.team-slot-status');
-    const slotTitle = nameInput.parentElement.parentElement.querySelector('.team-slot-title');
-    const types = pokemonData.types.map(t => t.type.name);
-    
-    nameInput.value = capitalizeFirstLetter(pokemonData.name);
-    slotTitle.textContent = `${capitalizeFirstLetter(pokemonData.name)} #${pokemonData.id}`;
-    slotStatus.textContent = '✓ Filled';
-    slotStatus.style.color = 'var(--success)';
-    
-    document.getElementById(`type1-${index}`).value = types[0] || '';
-    document.getElementById(`type2-${index}`).value = types[1] || '';
-    updateTypeBadges(index);
-}
-
-function updateTypeBadges(index) {
-    const type1 = document.getElementById(`type1-${index}`).value;
-    const type2 = document.getElementById(`type2-${index}`).value;
-    const badgesContainer = document.getElementById(`type-badges-${index}`);
-    const slotStatus = document.querySelector(`#name-${index}`).parentElement.parentElement.querySelector('.team-slot-status');
-    
-    badgesContainer.innerHTML = '';
-    
-    if (type1 || type2) {
-        slotStatus.textContent = type1 ? '✓ Filled' : 'Types Set';
-        slotStatus.style.color = 'var(--success)';
-    } else {
-        slotStatus.textContent = 'Empty';
-        slotStatus.style.color = 'var(--text-secondary)';
-    }
-    
-    if (type1) {
-        badgesContainer.appendChild(createTypeBadge(type1));
-    }
-    
-    if (type2) {
-        badgesContainer.appendChild(createTypeBadge(type2));
-    }
-}
-
-function createTypeBadge(type) {
-    const badge = document.createElement('span');
-    badge.className = 'type-badge';
-    badge.style.backgroundColor = typeData[type].color;
-    badge.textContent = typeData[type].name;
-    return badge;
 }
 
 function changeTeamSize() {
     initializeTeam();
     resetResults();
+    pokemonDataStore.clear();
 }
 
 function resetTeam() {
-    if (confirm('Reset the entire team?')) {
+    if (confirm('Reset the entire team? This will remove all Pokémon.')) {
         initializeTeam();
         resetResults();
         pokemonDataStore.clear();
@@ -338,30 +327,36 @@ function resetResults() {
     document.getElementById('summary-points').innerHTML = '';
 }
 
+// ===========================================
+// ANALYSIS FUNCTIONS - THESE WERE MISSING!
+// ===========================================
+
 function calculateAnalysis() {
     const team = [];
     const teamSize = parseInt(document.getElementById('team-size').value);
     let hasValidPokemon = false;
     
     for (let i = 0; i < teamSize; i++) {
-        const name = document.getElementById(`name-${i}`).value || `Pokémon ${i+1}`;
-        const type1 = document.getElementById(`type1-${i}`).value;
-        
-        if (type1) {
+        if (pokemonDataStore.has(i)) {
             hasValidPokemon = true;
-            const type2 = document.getElementById(`type2-${i}`).value || '';
-            team.push({ name, type1, type2 });
+            const pokemonData = pokemonDataStore.get(i);
+            const types = pokemonData.types.map(t => t.type.name);
+            team.push({ 
+                name: capitalizeFirstLetter(pokemonData.name), 
+                type1: types[0], 
+                type2: types[1] || ''
+            });
         }
     }
     
     if (!hasValidPokemon) {
-        alert('Please select types for at least one Pokémon!');
+        alert('Please add at least one Pokémon to your team!');
         return;
     }
     
     const calculateBtn = document.getElementById('calculate-btn');
     const originalText = calculateBtn.innerHTML;
-    calculateBtn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span>Analyzing...';
+    calculateBtn.innerHTML = '<span class="loading"></span>Analyzing...';
     calculateBtn.disabled = true;
     
     setTimeout(() => {
@@ -371,6 +366,12 @@ function calculateAnalysis() {
         
         calculateBtn.innerHTML = originalText;
         calculateBtn.disabled = false;
+        
+        // Scroll to results
+        document.getElementById('results-section').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
     }, 500);
 }
 
@@ -399,31 +400,6 @@ function updateCoverageForType(coverage, attackingType) {
         }
         coverage[defendingType] = Math.max(coverage[defendingType], effectiveness);
     }
-}
-
-function calculateDetailedStats(team) {
-    const stats = {
-        typeDistribution: {},
-        typeCombinations: [],
-        totalTypes: 0
-    };
-
-    team.forEach(pokemon => {
-        stats.typeDistribution[pokemon.type1] = (stats.typeDistribution[pokemon.type1] || 0) + 1;
-        stats.totalTypes++;
-        
-        if (pokemon.type2) {
-            stats.typeDistribution[pokemon.type2] = (stats.typeDistribution[pokemon.type2] || 0) + 1;
-            stats.totalTypes++;
-        }
-        
-        const combo = pokemon.type2 ? `${pokemon.type1}/${pokemon.type2}` : pokemon.type1;
-        if (!stats.typeCombinations.includes(combo)) {
-            stats.typeCombinations.push(combo);
-        }
-    });
-
-    return stats;
 }
 
 function calculatePokemonWeaknesses(type1, type2) {
@@ -511,6 +487,31 @@ function calculateWeaknesses(team) {
     return { weaknesses, teamWeaknesses };
 }
 
+function calculateDetailedStats(team) {
+    const stats = {
+        typeDistribution: {},
+        typeCombinations: [],
+        totalTypes: 0
+    };
+
+    team.forEach(pokemon => {
+        stats.typeDistribution[pokemon.type1] = (stats.typeDistribution[pokemon.type1] || 0) + 1;
+        stats.totalTypes++;
+        
+        if (pokemon.type2) {
+            stats.typeDistribution[pokemon.type2] = (stats.typeDistribution[pokemon.type2] || 0) + 1;
+            stats.totalTypes++;
+        }
+        
+        const combo = pokemon.type2 ? `${pokemon.type1}/${pokemon.type2}` : pokemon.type1;
+        if (!stats.typeCombinations.includes(combo)) {
+            stats.typeCombinations.push(combo);
+        }
+    });
+
+    return stats;
+}
+
 function displayResults(team, coverage, weaknesses) {
     displayTeamSprites(team);
     displayDetailedAnalysis(team);
@@ -518,13 +519,6 @@ function displayResults(team, coverage, weaknesses) {
     displaySummary(team, coverage, weaknesses);
     
     document.getElementById('results-section').classList.remove('hidden');
-    
-    setTimeout(() => {
-        document.getElementById('results-section').scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
-        });
-    }, 100);
 }
 
 function displayTeamSprites(team) {
@@ -546,8 +540,8 @@ function displayTeamSprites(team) {
                  alt="${pokemon.name}"
                  loading="lazy"
                  onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png'">
-            <div class="pokemon-sprite-name">${pokemon.name}</div>
-            <div class="pokemon-sprite-types">
+            <div class="pokemon-name">${pokemon.name}</div>
+            <div class="pokemon-types">
                 ${pokemon.type1 ? `<span class="type-badge small" style="background-color: ${typeData[pokemon.type1].color}">
                     ${typeData[pokemon.type1].name}
                 </span>` : ''}
@@ -572,7 +566,7 @@ function displayDetailedAnalysis(team) {
     
     // Team composition analysis
     const compositionDiv = document.createElement('div');
-    compositionDiv.className = 'analysis-section detailed-section';
+    compositionDiv.className = 'analysis-section';
     compositionDiv.innerHTML = `
         <div class="section-subtitle">
             <span class="material-icons">pie_chart</span>
@@ -615,7 +609,7 @@ function displayDetailedAnalysis(team) {
     team.forEach((pokemon, index) => {
         const pokemonWeaknesses = calculatePokemonWeaknesses(pokemon.type1, pokemon.type2);
         const pokemonDiv = document.createElement('div');
-        pokemonDiv.className = 'analysis-section detailed-section';
+        pokemonDiv.className = 'analysis-section';
         
         pokemonDiv.innerHTML = `
             <div class="section-subtitle">
@@ -711,31 +705,36 @@ function displayWeaknesses(weaknesses) {
             title: 'Critical Weaknesses (4×+)',
             types: weaknesses.teamWeaknesses.quadWeaknesses,
             icon: 'dangerous',
-            className: 'danger'
+            className: 'danger',
+            description: 'Types that deal 4× or more damage to your entire team'
         },
         { 
             title: 'Major Weaknesses (2×)',
             types: weaknesses.teamWeaknesses.weaknesses,
             icon: 'warning',
-            className: 'warning'
+            className: 'warning',
+            description: 'Types that deal 2× damage to your entire team'
         },
         { 
             title: 'Team Resistances',
             types: weaknesses.teamWeaknesses.resistances,
             icon: 'shield',
-            className: 'positive'
+            className: 'positive',
+            description: 'Types your team resists (0.5× damage)'
         },
         { 
             title: 'Quadruple Resistances',
             types: weaknesses.teamWeaknesses.quadResistances,
             icon: 'health_and_safety',
-            className: 'positive'
+            className: 'positive',
+            description: 'Types your team strongly resists (0.25× damage)'
         },
         { 
             title: 'Immunities',
             types: weaknesses.teamWeaknesses.immunities,
             icon: 'block',
-            className: 'positive'
+            className: 'positive',
+            description: 'Types that deal no damage to your team'
         }
     ];
 
@@ -744,13 +743,13 @@ function displayWeaknesses(weaknesses) {
             const categoryDiv = document.createElement('div');
             categoryDiv.className = 'weakness-category';
             categoryDiv.innerHTML = `
-                <div class="category-header ${category.className}">
+                <div class="category-header ${category.className}" title="${category.description}">
                     <span class="material-icons">${category.icon}</span>
-                    ${category.title} <span style="margin-left: 8px; font-size: 14px; opacity: 0.8;">(${category.types.length})</span>
+                    ${category.title} <span class="count-badge">${category.types.length}</span>
                 </div>
                 <div class="category-types">
                     ${category.types.map(type => `
-                        <span class="type-badge small" style="background-color: ${typeData[type].color}">
+                        <span class="type-badge small" style="background-color: ${typeData[type].color}" title="${typeData[type].name}">
                             ${typeData[type].name}
                         </span>
                     `).join('')}
@@ -773,12 +772,15 @@ function displayWeaknesses(weaknesses) {
 function calculateBalanceScore(team, coverage, weaknesses) {
     let score = 0;
     
+    // Coverage score (0-40 points)
     const superEffectiveTypes = Object.values(coverage).filter(v => v >= 2).length;
     const coverageScore = (superEffectiveTypes / 18) * 40;
     
+    // Defense score (0-40 points)
     const defenseScore = 40 - (weaknesses.teamWeaknesses.quadWeaknesses.length * 8) 
                         - (weaknesses.teamWeaknesses.weaknesses.length * 3);
     
+    // Type diversity score (0-20 points)
     const uniqueTypes = new Set();
     team.forEach(p => {
         uniqueTypes.add(p.type1);
@@ -788,6 +790,7 @@ function calculateBalanceScore(team, coverage, weaknesses) {
     
     score = Math.max(0, Math.min(100, Math.round(coverageScore + defenseScore + diversityScore)));
     
+    // Add bonus for immunities
     if (weaknesses.teamWeaknesses.immunities.length > 0) {
         score += Math.min(10, weaknesses.teamWeaknesses.immunities.length * 3);
     }
@@ -800,9 +803,11 @@ function displaySummary(team, coverage, weaknesses) {
     summaryPoints.innerHTML = '';
     
     let superEffectiveCount = 0;
+    let resistedCount = 0;
     
     for (const type in coverage) {
         if (coverage[type] >= 2) superEffectiveCount++;
+        if (coverage[type] <= 0.5) resistedCount++;
     }
     
     const detailedStats = calculateDetailedStats(team);
@@ -812,43 +817,51 @@ function displaySummary(team, coverage, weaknesses) {
         {
             title: 'Team Size',
             value: team.length,
-            icon: 'groups'
+            icon: 'groups',
+            description: 'Number of Pokémon in team'
         },
         {
             title: 'Type Coverage',
             value: `${Math.round((superEffectiveCount / 18) * 100)}%`,
-            icon: 'coverage'
+            icon: 'coverage',
+            description: 'Percentage of types your team hits super-effectively'
         },
         {
             title: 'Unique Types',
             value: Object.keys(detailedStats.typeDistribution).length,
-            icon: 'category'
+            icon: 'category',
+            description: 'Number of unique types in team'
         },
         {
             title: 'Immunities',
             value: weaknesses.teamWeaknesses.immunities.length,
-            icon: 'shield'
+            icon: 'shield',
+            description: 'Types that deal no damage to your team'
         },
         {
             title: 'Critical Weak',
             value: weaknesses.teamWeaknesses.quadWeaknesses.length,
-            icon: 'dangerous'
+            icon: 'dangerous',
+            description: 'Types that deal 4×+ damage to entire team'
         },
         {
             title: 'Resistances',
             value: weaknesses.teamWeaknesses.resistances.length + 
                    weaknesses.teamWeaknesses.quadResistances.length,
-            icon: 'security'
+            icon: 'security',
+            description: 'Types your team resists (0.5× or 0.25×)'
         },
         {
             title: 'Weaknesses',
             value: weaknesses.teamWeaknesses.weaknesses.length,
-            icon: 'warning'
+            icon: 'warning',
+            description: 'Types that deal 2× damage to entire team'
         },
         {
             title: 'Balance Score',
             value: balanceScore,
             icon: 'balance',
+            description: 'Overall team balance (0-100)',
             showScore: true
         }
     ];
@@ -858,6 +871,7 @@ function displaySummary(team, coverage, weaknesses) {
     summaryItems.forEach(item => {
         const summaryItem = document.createElement('div');
         summaryItem.className = 'summary-card';
+        summaryItem.setAttribute('title', item.description);
         
         const scoreClass = item.showScore ? 
             (item.value >= 80 ? 'score-excellent' : 
@@ -868,7 +882,7 @@ function displaySummary(team, coverage, weaknesses) {
             <div class="summary-icon">
                 <span class="material-icons">${item.icon}</span>
             </div>
-            <div class="summary-value ${scoreClass}">${item.value}${item.showScore ? '' : ''}</div>
+            <div class="summary-value ${scoreClass}">${item.value}${item.showScore ? '/100' : ''}</div>
             <div class="summary-label">${item.title}</div>
         `;
         
@@ -877,13 +891,110 @@ function displaySummary(team, coverage, weaknesses) {
     
     summaryPoints.appendChild(fragment);
     
-    // Add score styles
+    // Add score color styles
     const style = document.createElement('style');
     style.textContent = `
         .score-excellent { color: var(--success) !important; }
         .score-good { color: var(--info) !important; }
         .score-average { color: var(--warning) !important; }
         .score-poor { color: var(--error) !important; }
+        .count-badge {
+            background: var(--surface-light);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-left: 8px;
+        }
+        .analysis-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .analysis-section:last-child {
+            border-bottom: none;
+        }
+        .section-subtitle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+        .detailed-content {
+            background: var(--surface-light);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: var(--surface-color);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .defensive-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+        .defense-category {
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 4px solid var(--border-color);
+        }
+        .defense-category.positive {
+            border-left-color: var(--success);
+        }
+        .defense-category.warning {
+            border-left-color: var(--warning);
+        }
+        .defense-category.danger {
+            border-left-color: var(--error);
+        }
+        .category-label {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        .type-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            min-height: 24px;
+        }
+        .no-data {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .analysis-item {
+            background: var(--surface-light);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
     `;
     document.head.appendChild(style);
 }
