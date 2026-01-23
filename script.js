@@ -51,6 +51,7 @@ let searchTimeout = null;
 document.addEventListener('DOMContentLoaded', function() {
     initializeTeam();
     setupEventListeners();
+    updateQuickStats();
 });
 
 function setupEventListeners() {
@@ -243,6 +244,7 @@ function confirmAddPokemon() {
     pokemonDataStore.set(currentSelectedSlot, selectedPokemonData);
     updateTeamSlot(currentSelectedSlot, selectedPokemonData);
     closePopup();
+    updateQuickStats();
 }
 
 function updateTeamSlot(slotIndex, pokemonData) {
@@ -289,67 +291,97 @@ function removePokemon(slotIndex) {
         
         // Re-add click event
         slot.addEventListener('click', () => openPopup(slotIndex));
+        updateQuickStats();
     }
 }
 
 // Function to get the best available sprite
 function getBestSprite(id, name) {
-    // Try different sprite sources
-    const spriteSources = [
-        `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
-        `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`,
-        `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
-        `https://play.pokemonshowdown.com/sprites/ani/${name}.gif`
-    ];
-    
-    return spriteSources[0];
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 }
 
 function changeTeamSize() {
+    const newSize = parseInt(document.getElementById('team-size').value);
+    const currentSize = pokemonDataStore.size;
+    
+    if (currentSize > newSize) {
+        if (!confirm(`Changing team size to ${newSize} will remove ${currentSize - newSize} Pokémon from your team. Continue?`)) {
+            document.getElementById('team-size').value = currentSize;
+            return;
+        }
+    }
+    
+    // Clear data for removed slots
+    for (let i = newSize; i < 6; i++) {
+        pokemonDataStore.delete(i);
+    }
+    
     initializeTeam();
     resetResults();
-    pokemonDataStore.clear();
+    updateQuickStats();
 }
 
 function resetTeam() {
     if (confirm('Reset the entire team? This will remove all Pokémon.')) {
+        pokemonDataStore.clear();
         initializeTeam();
         resetResults();
-        pokemonDataStore.clear();
+        updateQuickStats();
     }
 }
 
 function resetResults() {
     document.getElementById('results-section').classList.add('hidden');
-    document.getElementById('team-sprites').innerHTML = '';
-    document.getElementById('coverage-body').innerHTML = '';
-    document.getElementById('weakness-body').innerHTML = '';
-    document.getElementById('summary-points').innerHTML = '';
+    document.getElementById('team-table-body').innerHTML = '';
+    document.getElementById('critical-types').innerHTML = '';
+    document.getElementById('moderate-types').innerHTML = '';
+    document.getElementById('strong-types').innerHTML = '';
 }
 
-// ===========================================
-// ANALYSIS FUNCTIONS - THESE WERE MISSING!
-// ===========================================
+function updateQuickStats() {
+    const teamSize = pokemonDataStore.size;
+    const team = Array.from(pokemonDataStore.entries()).map(([index, data]) => ({
+        name: capitalizeFirstLetter(data.name),
+        type1: data.types[0].type.name,
+        type2: data.types[1] ? data.types[1].type.name : ''
+    }));
+    
+    const stats = document.getElementById('quick-stats');
+    stats.innerHTML = `
+        <div class="stat-item">
+            <span class="stat-label">Team Size</span>
+            <span class="stat-value">${teamSize}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Type Coverage</span>
+            <span class="stat-value">${teamSize > 0 ? '??' : '0'}%</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Team Score</span>
+            <span class="stat-value">${teamSize > 0 ? '??' : '0'}/100</span>
+        </div>
+    `;
+}
 
 function calculateAnalysis() {
     const team = [];
     const teamSize = parseInt(document.getElementById('team-size').value);
-    let hasValidPokemon = false;
     
     for (let i = 0; i < teamSize; i++) {
         if (pokemonDataStore.has(i)) {
-            hasValidPokemon = true;
             const pokemonData = pokemonDataStore.get(i);
             const types = pokemonData.types.map(t => t.type.name);
             team.push({ 
+                id: pokemonData.id,
                 name: capitalizeFirstLetter(pokemonData.name), 
                 type1: types[0], 
-                type2: types[1] || ''
+                type2: types[1] || '',
+                sprite: getBestSprite(pokemonData.id, pokemonData.name)
             });
         }
     }
     
-    if (!hasValidPokemon) {
+    if (team.length === 0) {
         alert('Please add at least one Pokémon to your team!');
         return;
     }
@@ -362,8 +394,13 @@ function calculateAnalysis() {
     setTimeout(() => {
         const coverage = calculateCoverage(team);
         const weaknesses = calculateWeaknesses(team);
-        displayResults(team, coverage, weaknesses);
+        const teamStats = calculateTeamStats(team, coverage, weaknesses);
         
+        displayTeamTable(team);
+        displayScoreSummary(teamStats);
+        displayWeaknessSummary(weaknesses);
+        
+        document.getElementById('results-section').classList.remove('hidden');
         calculateBtn.innerHTML = originalText;
         calculateBtn.disabled = false;
         
@@ -445,6 +482,23 @@ function calculatePokemonWeaknesses(type1, type2) {
     return { weaknesses, detailed };
 }
 
+function calculateIndividualScore(pokemonWeaknesses) {
+    let score = 100;
+    const { immunities, quadResistances, resistances, weaknesses, quadWeaknesses } = pokemonWeaknesses.detailed;
+    
+    // Bonus for immunities and resistances
+    score += immunities.length * 15;
+    score += quadResistances.length * 10;
+    score += resistances.length * 5;
+    
+    // Penalty for weaknesses
+    score -= weaknesses.length * 10;
+    score -= quadWeaknesses.length * 25;
+    
+    // Ensure score is between 0-100
+    return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 function calculateWeaknesses(team) {
     const weaknesses = {};
     const teamWeaknesses = {
@@ -487,516 +541,149 @@ function calculateWeaknesses(team) {
     return { weaknesses, teamWeaknesses };
 }
 
-function calculateDetailedStats(team) {
-    const stats = {
-        typeDistribution: {},
-        typeCombinations: [],
-        totalTypes: 0
-    };
-
-    team.forEach(pokemon => {
-        stats.typeDistribution[pokemon.type1] = (stats.typeDistribution[pokemon.type1] || 0) + 1;
-        stats.totalTypes++;
-        
-        if (pokemon.type2) {
-            stats.typeDistribution[pokemon.type2] = (stats.typeDistribution[pokemon.type2] || 0) + 1;
-            stats.totalTypes++;
-        }
-        
-        const combo = pokemon.type2 ? `${pokemon.type1}/${pokemon.type2}` : pokemon.type1;
-        if (!stats.typeCombinations.includes(combo)) {
-            stats.typeCombinations.push(combo);
-        }
-    });
-
-    return stats;
-}
-
-function displayResults(team, coverage, weaknesses) {
-    displayTeamSprites(team);
-    displayDetailedAnalysis(team);
-    displayWeaknesses(weaknesses);
-    displaySummary(team, coverage, weaknesses);
-    
-    document.getElementById('results-section').classList.remove('hidden');
-}
-
-function displayTeamSprites(team) {
-    const spritesContainer = document.getElementById('team-sprites');
-    spritesContainer.innerHTML = '';
-    
-    const fragment = document.createDocumentFragment();
-    
-    team.forEach((pokemon, index) => {
-        const pokemonData = pokemonDataStore.get(index);
-        const spriteDiv = document.createElement('div');
-        spriteDiv.className = 'pokemon-sprite';
-        
-        const spriteUrl = pokemonData ? getBestSprite(pokemonData.id, pokemonData.name) : 
-                         `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png`;
-        
-        spriteDiv.innerHTML = `
-            <img src="${spriteUrl}" 
-                 alt="${pokemon.name}"
-                 loading="lazy"
-                 onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png'">
-            <div class="pokemon-name">${pokemon.name}</div>
-            <div class="pokemon-types">
-                ${pokemon.type1 ? `<span class="type-badge small" style="background-color: ${typeData[pokemon.type1].color}">
-                    ${typeData[pokemon.type1].name}
-                </span>` : ''}
-                ${pokemon.type2 ? `<span class="type-badge small" style="background-color: ${typeData[pokemon.type2].color}">
-                    ${typeData[pokemon.type2].name}
-                </span>` : ''}
-            </div>
-        `;
-        
-        fragment.appendChild(spriteDiv);
-    });
-    
-    spritesContainer.appendChild(fragment);
-}
-
-function displayDetailedAnalysis(team) {
-    const stats = calculateDetailedStats(team);
-    const analysisBody = document.getElementById('coverage-body');
-    analysisBody.innerHTML = '';
-    
-    const fragment = document.createDocumentFragment();
-    
-    // Team composition analysis
-    const compositionDiv = document.createElement('div');
-    compositionDiv.className = 'analysis-section';
-    compositionDiv.innerHTML = `
-        <div class="section-subtitle">
-            <span class="material-icons">pie_chart</span>
-            Team Composition
-        </div>
-        <div class="detailed-content">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-value">${team.length}</div>
-                    <div class="stat-label">Pokémon</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">${stats.typeCombinations.length}</div>
-                    <div class="stat-label">Unique Combos</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">${Object.keys(stats.typeDistribution).length}</div>
-                    <div class="stat-label">Unique Types</div>
-                </div>
-            </div>
-            
-            <div class="type-distribution">
-                <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 10px;">Type Distribution</div>
-                ${Object.entries(stats.typeDistribution)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([type, count]) => `
-                    <div class="distribution-item">
-                        <span class="type-badge small" style="background-color: ${typeData[type].color}">
-                            ${typeData[type].name}
-                        </span>
-                        <span class="distribution-count">${count}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-    fragment.appendChild(compositionDiv);
-
-    // Individual Pokémon analysis
-    team.forEach((pokemon, index) => {
-        const pokemonWeaknesses = calculatePokemonWeaknesses(pokemon.type1, pokemon.type2);
-        const pokemonDiv = document.createElement('div');
-        pokemonDiv.className = 'analysis-section';
-        
-        pokemonDiv.innerHTML = `
-            <div class="section-subtitle">
-                <span class="material-icons">catching_pokemon</span>
-                ${pokemon.name}
-                <span class="pokemon-types">
-                    ${pokemon.type1 ? `<span class="type-badge small" style="background-color: ${typeData[pokemon.type1].color}">
-                        ${typeData[pokemon.type1].name}
-                    </span>` : ''}
-                    ${pokemon.type2 ? `<span class="type-badge small" style="background-color: ${typeData[pokemon.type2].color}">
-                        ${typeData[pokemon.type2].name}
-                    </span>` : ''}
-                </span>
-            </div>
-            <div class="detailed-content">
-                <div class="defensive-stats">
-                    <div class="defense-category ${pokemonWeaknesses.detailed.immunities.length > 0 ? 'positive' : ''}">
-                        <span class="category-label">Immunities</span>
-                        <div class="type-list">
-                            ${pokemonWeaknesses.detailed.immunities.map(type => `
-                                <span class="type-badge small" style="background-color: ${typeData[type].color}">
-                                    ${typeData[type].name}
-                                </span>
-                            `).join('')}
-                            ${pokemonWeaknesses.detailed.immunities.length === 0 ? '<span class="no-data">None</span>' : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="defense-category ${pokemonWeaknesses.detailed.quadResistances.length > 0 ? 'positive' : ''}">
-                        <span class="category-label">4× Resist</span>
-                        <div class="type-list">
-                            ${pokemonWeaknesses.detailed.quadResistances.map(type => `
-                                <span class="type-badge small" style="background-color: ${typeData[type].color}">
-                                    ${typeData[type].name}
-                                </span>
-                            `).join('')}
-                            ${pokemonWeaknesses.detailed.quadResistances.length === 0 ? '<span class="no-data">None</span>' : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="defense-category ${pokemonWeaknesses.detailed.resistances.length > 0 ? 'positive' : ''}">
-                        <span class="category-label">Resistances</span>
-                        <div class="type-list">
-                            ${pokemonWeaknesses.detailed.resistances.map(type => `
-                                <span class="type-badge small" style="background-color: ${typeData[type].color}">
-                                    ${typeData[type].name}
-                                </span>
-                            `).join('')}
-                            ${pokemonWeaknesses.detailed.resistances.length === 0 ? '<span class="no-data">None</span>' : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="defense-category ${pokemonWeaknesses.detailed.weaknesses.length > 0 ? 'warning' : ''}">
-                        <span class="category-label">Weaknesses</span>
-                        <div class="type-list">
-                            ${pokemonWeaknesses.detailed.weaknesses.map(type => `
-                                <span class="type-badge small" style="background-color: ${typeData[type].color}">
-                                    ${typeData[type].name}
-                                </span>
-                            `).join('')}
-                            ${pokemonWeaknesses.detailed.weaknesses.length === 0 ? '<span class="no-data">None</span>' : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="defense-category ${pokemonWeaknesses.detailed.quadWeaknesses.length > 0 ? 'danger' : ''}">
-                        <span class="category-label">4× Weak</span>
-                        <div class="type-list">
-                            ${pokemonWeaknesses.detailed.quadWeaknesses.map(type => `
-                                <span class="type-badge small" style="background-color: ${typeData[type].color}">
-                                    ${typeData[type].name}
-                                </span>
-                            `).join('')}
-                            ${pokemonWeaknesses.detailed.quadWeaknesses.length === 0 ? '<span class="no-data">None</span>' : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        fragment.appendChild(pokemonDiv);
-    });
-    
-    analysisBody.appendChild(fragment);
-}
-
-function displayWeaknesses(weaknesses) {
-    const weaknessBody = document.getElementById('weakness-body');
-    weaknessBody.innerHTML = '';
-    
-    const fragment = document.createDocumentFragment();
-    
-    const categories = [
-        { 
-            title: 'Critical Weaknesses (4×+)',
-            types: weaknesses.teamWeaknesses.quadWeaknesses,
-            icon: 'dangerous',
-            className: 'danger',
-            description: 'Types that deal 4× or more damage to your entire team'
-        },
-        { 
-            title: 'Major Weaknesses (2×)',
-            types: weaknesses.teamWeaknesses.weaknesses,
-            icon: 'warning',
-            className: 'warning',
-            description: 'Types that deal 2× damage to your entire team'
-        },
-        { 
-            title: 'Team Resistances',
-            types: weaknesses.teamWeaknesses.resistances,
-            icon: 'shield',
-            className: 'positive',
-            description: 'Types your team resists (0.5× damage)'
-        },
-        { 
-            title: 'Quadruple Resistances',
-            types: weaknesses.teamWeaknesses.quadResistances,
-            icon: 'health_and_safety',
-            className: 'positive',
-            description: 'Types your team strongly resists (0.25× damage)'
-        },
-        { 
-            title: 'Immunities',
-            types: weaknesses.teamWeaknesses.immunities,
-            icon: 'block',
-            className: 'positive',
-            description: 'Types that deal no damage to your team'
-        }
-    ];
-
-    categories.forEach(category => {
-        if (category.types.length > 0) {
-            const categoryDiv = document.createElement('div');
-            categoryDiv.className = 'weakness-category';
-            categoryDiv.innerHTML = `
-                <div class="category-header ${category.className}" title="${category.description}">
-                    <span class="material-icons">${category.icon}</span>
-                    ${category.title} <span class="count-badge">${category.types.length}</span>
-                </div>
-                <div class="category-types">
-                    ${category.types.map(type => `
-                        <span class="type-badge small" style="background-color: ${typeData[type].color}" title="${typeData[type].name}">
-                            ${typeData[type].name}
-                        </span>
-                    `).join('')}
-                </div>
-            `;
-            fragment.appendChild(categoryDiv);
-        }
-    });
-
-    if (fragment.children.length === 0) {
-        const item = document.createElement('div');
-        item.className = 'analysis-item';
-        item.innerHTML = '<span class="no-data">No significant weaknesses or resistances found!</span>';
-        fragment.appendChild(item);
+function calculateTeamStats(team, coverage, weaknesses) {
+    let superEffectiveCount = 0;
+    for (const type in coverage) {
+        if (coverage[type] >= 2) superEffectiveCount++;
     }
     
-    weaknessBody.appendChild(fragment);
-}
-
-function calculateBalanceScore(team, coverage, weaknesses) {
-    let score = 0;
+    const coveragePercentage = Math.round((superEffectiveCount / 18) * 100);
     
-    // Coverage score (0-40 points)
-    const superEffectiveTypes = Object.values(coverage).filter(v => v >= 2).length;
-    const coverageScore = (superEffectiveTypes / 18) * 40;
+    // Calculate defense score
+    let defenseScore = 100;
+    defenseScore -= weaknesses.teamWeaknesses.quadWeaknesses.length * 20;
+    defenseScore -= weaknesses.teamWeaknesses.weaknesses.length * 10;
+    defenseScore += weaknesses.teamWeaknesses.immunities.length * 15;
+    defenseScore += weaknesses.teamWeaknesses.quadResistances.length * 10;
+    defenseScore += weaknesses.teamWeaknesses.resistances.length * 5;
+    defenseScore = Math.max(0, Math.min(100, defenseScore));
     
-    // Defense score (0-40 points)
-    const defenseScore = 40 - (weaknesses.teamWeaknesses.quadWeaknesses.length * 8) 
-                        - (weaknesses.teamWeaknesses.weaknesses.length * 3);
-    
-    // Type diversity score (0-20 points)
+    // Calculate type diversity
     const uniqueTypes = new Set();
     team.forEach(p => {
         uniqueTypes.add(p.type1);
         if (p.type2) uniqueTypes.add(p.type2);
     });
-    const diversityScore = (uniqueTypes.size / Math.min(team.length * 2, 18)) * 20;
+    const diversityPercentage = Math.round((uniqueTypes.size / Math.min(team.length * 2, 18)) * 100);
     
-    score = Math.max(0, Math.min(100, Math.round(coverageScore + defenseScore + diversityScore)));
+    // Overall score (weighted average)
+    const overallScore = Math.round(
+        (coveragePercentage * 0.4) + 
+        (defenseScore * 0.4) + 
+        (diversityPercentage * 0.2)
+    );
     
-    // Add bonus for immunities
-    if (weaknesses.teamWeaknesses.immunities.length > 0) {
-        score += Math.min(10, weaknesses.teamWeaknesses.immunities.length * 3);
-    }
-    
-    return Math.min(100, score);
+    return {
+        overallScore,
+        coveragePercentage,
+        defenseScore,
+        diversityPercentage
+    };
 }
 
-function displaySummary(team, coverage, weaknesses) {
-    const summaryPoints = document.getElementById('summary-points');
-    summaryPoints.innerHTML = '';
+function displayTeamTable(team) {
+    const tableBody = document.getElementById('team-table-body');
+    tableBody.innerHTML = '';
     
-    let superEffectiveCount = 0;
-    let resistedCount = 0;
-    
-    for (const type in coverage) {
-        if (coverage[type] >= 2) superEffectiveCount++;
-        if (coverage[type] <= 0.5) resistedCount++;
-    }
-    
-    const detailedStats = calculateDetailedStats(team);
-    const balanceScore = calculateBalanceScore(team, coverage, weaknesses);
-    
-    const summaryItems = [
-        {
-            title: 'Team Size',
-            value: team.length,
-            icon: 'groups',
-            description: 'Number of Pokémon in team'
-        },
-        {
-            title: 'Type Coverage',
-            value: `${Math.round((superEffectiveCount / 18) * 100)}%`,
-            icon: 'coverage',
-            description: 'Percentage of types your team hits super-effectively'
-        },
-        {
-            title: 'Unique Types',
-            value: Object.keys(detailedStats.typeDistribution).length,
-            icon: 'category',
-            description: 'Number of unique types in team'
-        },
-        {
-            title: 'Immunities',
-            value: weaknesses.teamWeaknesses.immunities.length,
-            icon: 'shield',
-            description: 'Types that deal no damage to your team'
-        },
-        {
-            title: 'Critical Weak',
-            value: weaknesses.teamWeaknesses.quadWeaknesses.length,
-            icon: 'dangerous',
-            description: 'Types that deal 4×+ damage to entire team'
-        },
-        {
-            title: 'Resistances',
-            value: weaknesses.teamWeaknesses.resistances.length + 
-                   weaknesses.teamWeaknesses.quadResistances.length,
-            icon: 'security',
-            description: 'Types your team resists (0.5× or 0.25×)'
-        },
-        {
-            title: 'Weaknesses',
-            value: weaknesses.teamWeaknesses.weaknesses.length,
-            icon: 'warning',
-            description: 'Types that deal 2× damage to entire team'
-        },
-        {
-            title: 'Balance Score',
-            value: balanceScore,
-            icon: 'balance',
-            description: 'Overall team balance (0-100)',
-            showScore: true
-        }
-    ];
-    
-    const fragment = document.createDocumentFragment();
-    
-    summaryItems.forEach(item => {
-        const summaryItem = document.createElement('div');
-        summaryItem.className = 'summary-card';
-        summaryItem.setAttribute('title', item.description);
+    team.forEach((pokemon, index) => {
+        const pokemonWeaknesses = calculatePokemonWeaknesses(pokemon.type1, pokemon.type2);
+        const individualScore = calculateIndividualScore(pokemonWeaknesses);
         
-        const scoreClass = item.showScore ? 
-            (item.value >= 80 ? 'score-excellent' : 
-             item.value >= 60 ? 'score-good' : 
-             item.value >= 40 ? 'score-average' : 'score-poor') : '';
-        
-        summaryItem.innerHTML = `
-            <div class="summary-icon">
-                <span class="material-icons">${item.icon}</span>
-            </div>
-            <div class="summary-value ${scoreClass}">${item.value}${item.showScore ? '/100' : ''}</div>
-            <div class="summary-label">${item.title}</div>
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="pokemon-cell">
+                <img src="${pokemon.sprite}" alt="${pokemon.name}">
+                <div class="pokemon-info">
+                    <span class="pokemon-name">${pokemon.name}</span>
+                    <span class="pokemon-id">#${pokemon.id.toString().padStart(3, '0')}</span>
+                </div>
+            </td>
+            <td class="types-cell">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <span class="type-badge" style="background-color: ${typeData[pokemon.type1].color}">
+                        ${typeData[pokemon.type1].name}
+                    </span>
+                    ${pokemon.type2 ? `
+                    <span class="type-badge" style="background-color: ${typeData[pokemon.type2].color}">
+                        ${typeData[pokemon.type2].name}
+                    </span>
+                    ` : ''}
+                </div>
+            </td>
+            <td class="weakness-cell">
+                ${pokemonWeaknesses.detailed.weaknesses.concat(pokemonWeaknesses.detailed.quadWeaknesses).map(type => `
+                    <span class="type-badge small" style="background-color: ${typeData[type].color}">
+                        ${typeData[type].name}
+                    </span>
+                `).join('')}
+                ${pokemonWeaknesses.detailed.weaknesses.length + pokemonWeaknesses.detailed.quadWeaknesses.length === 0 ? 
+                  '<span style="color: var(--text-secondary); font-style: italic;">None</span>' : ''}
+            </td>
+            <td class="resistance-cell">
+                ${pokemonWeaknesses.detailed.resistances.concat(pokemonWeaknesses.detailed.quadResistances, pokemonWeaknesses.detailed.immunities).map(type => `
+                    <span class="type-badge small" style="background-color: ${typeData[type].color}">
+                        ${typeData[type].name}
+                    </span>
+                `).join('')}
+                ${pokemonWeaknesses.detailed.resistances.length + pokemonWeaknesses.detailed.quadResistances.length + pokemonWeaknesses.detailed.immunities.length === 0 ? 
+                  '<span style="color: var(--text-secondary); font-style: italic;">None</span>' : ''}
+            </td>
+            <td class="score-cell">
+                <span class="individual-score ${individualScore >= 80 ? 'score-excellent' : individualScore >= 60 ? 'score-good' : individualScore >= 40 ? 'score-average' : 'score-poor'}">
+                    ${individualScore}
+                </span>
+            </td>
         `;
-        
-        fragment.appendChild(summaryItem);
+        tableBody.appendChild(row);
     });
+}
+
+function displayScoreSummary(stats) {
+    document.getElementById('overall-score').textContent = stats.overallScore;
+    document.getElementById('coverage-score').textContent = `${stats.coveragePercentage}%`;
+    document.getElementById('defense-score').textContent = `${stats.defenseScore}%`;
+    document.getElementById('diversity-score').textContent = `${stats.diversityPercentage}%`;
     
-    summaryPoints.appendChild(fragment);
+    // Update progress bars
+    document.getElementById('coverage-fill').style.width = `${stats.coveragePercentage}%`;
+    document.getElementById('defense-fill').style.width = `${stats.defenseScore}%`;
+    document.getElementById('diversity-fill').style.width = `${stats.diversityPercentage}%`;
+}
+
+function displayWeaknessSummary(weaknesses) {
+    const { teamWeaknesses } = weaknesses;
     
-    // Add score color styles
-    const style = document.createElement('style');
-    style.textContent = `
-        .score-excellent { color: var(--success) !important; }
-        .score-good { color: var(--info) !important; }
-        .score-average { color: var(--warning) !important; }
-        .score-poor { color: var(--error) !important; }
-        .count-badge {
-            background: var(--surface-light);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 14px;
-            margin-left: 8px;
-        }
-        .analysis-section {
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .analysis-section:last-child {
-            border-bottom: none;
-        }
-        .section-subtitle {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 15px;
-        }
-        .detailed-content {
-            background: var(--surface-light);
-            border-radius: 12px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .stat-item {
-            text-align: center;
-            padding: 12px;
-            background: var(--surface-color);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-        .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        .stat-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        .defensive-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 10px;
-        }
-        .defense-category {
-            background: var(--surface-color);
-            border-radius: 8px;
-            padding: 12px;
-            border-left: 4px solid var(--border-color);
-        }
-        .defense-category.positive {
-            border-left-color: var(--success);
-        }
-        .defense-category.warning {
-            border-left-color: var(--warning);
-        }
-        .defense-category.danger {
-            border-left-color: var(--error);
-        }
-        .category-label {
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-primary);
-        }
-        .type-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            min-height: 24px;
-        }
-        .no-data {
-            font-size: 12px;
-            color: var(--text-secondary);
-            font-style: italic;
-        }
-        .analysis-item {
-            background: var(--surface-light);
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-        }
-    `;
-    document.head.appendChild(style);
+    // Critical weaknesses (4x+)
+    document.getElementById('critical-count').textContent = teamWeaknesses.quadWeaknesses.length;
+    const criticalTypes = document.getElementById('critical-types');
+    criticalTypes.innerHTML = teamWeaknesses.quadWeaknesses.map(type => `
+        <span class="type-badge" style="background-color: ${typeData[type].color}">
+            ${typeData[type].name}
+        </span>
+    `).join('');
+    
+    // Moderate weaknesses (2x)
+    document.getElementById('moderate-count').textContent = teamWeaknesses.weaknesses.length;
+    const moderateTypes = document.getElementById('moderate-types');
+    moderateTypes.innerHTML = teamWeaknesses.weaknesses.map(type => `
+        <span class="type-badge" style="background-color: ${typeData[type].color}">
+            ${typeData[type].name}
+        </span>
+    `).join('');
+    
+    // Strong resistances (immunities + 0.25x + 0.5x)
+    const strongCount = teamWeaknesses.immunities.length + teamWeaknesses.quadResistances.length + teamWeaknesses.resistances.length;
+    document.getElementById('strong-count').textContent = strongCount;
+    const strongTypes = document.getElementById('strong-types');
+    strongTypes.innerHTML = [
+        ...teamWeaknesses.immunities,
+        ...teamWeaknesses.quadResistances,
+        ...teamWeaknesses.resistances
+    ].map(type => `
+        <span class="type-badge" style="background-color: ${typeData[type].color}">
+            ${typeData[type].name}
+        </span>
+    `).join('');
 }
 
 function capitalizeFirstLetter(string) {

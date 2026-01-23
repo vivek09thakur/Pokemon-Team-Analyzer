@@ -55,18 +55,16 @@
     </div>
 
     <div class="container">
-      <!-- Main Content -->
-      <div class="main-content">
-        <!-- Header -->
-        <div class="header">
-          <div class="header-content">
-            <div class="logo">
-              <span class="material-icons logo-icon">catching_pokemon</span>
-              <h1>Pokémon Team Analyzer</h1>
-            </div>
-            <p class="tagline">Build your perfect team and analyze type matchups</p>
-          </div>
-          
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="logo">
+          <span class="material-icons logo-icon">catching_pokemon</span>
+          <h1>Pokémon Team Analyzer</h1>
+        </div>
+        <p class="tagline">Build your perfect team and analyze type matchups</p>
+        
+        <div class="sidebar-section">
+          <h3>Team Settings</h3>
           <div class="team-size-selector">
             <span>Team Size:</span>
             <select id="team-size" class="select-field">
@@ -77,7 +75,39 @@
             </select>
           </div>
         </div>
+        
+        <div class="sidebar-section">
+          <h3>Quick Stats</h3>
+          <div class="quick-stats" id="quick-stats">
+            <div class="stat-item">
+              <span class="stat-label">Team Size</span>
+              <span class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Type Coverage</span>
+              <span class="stat-value">0%</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Team Score</span>
+              <span class="stat-value">0/100</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="sidebar-action">
+          <button id="calculate-btn" class="btn-primary">
+            <span class="material-icons">analytics</span>
+            Analyze Team
+          </button>
+          <button id="reset-btn" class="btn-secondary">
+            <span class="material-icons">refresh</span>
+            Reset All
+          </button>
+        </div>
+      </div>
 
+      <!-- Main Content -->
+      <div class="main-content">
         <!-- Team Builder Section -->
         <div class="card team-builder">
           <div class="section-header">
@@ -89,72 +119,120 @@
           <div class="team-grid" id="team-container">
             <!-- Team slots will be generated here -->
           </div>
-
-          <!-- Action Buttons -->
-          <div class="action-buttons">
-            <button id="calculate-btn" class="btn-primary">
-              <span class="material-icons">analytics</span>
-              Analyze Team
-            </button>
-            <button id="reset-btn" class="btn-secondary">
-              <span class="material-icons">refresh</span>
-              Reset All
-            </button>
-          </div>
         </div>
 
         <!-- Results Section -->
         <div id="results-section" class="hidden">
           <div class="card analysis">
-            <div class="section-header">
-              <h2>Team Analysis</h2>
-              <p>Comprehensive breakdown of your team's strengths and weaknesses</p>
+            <!-- Team Score Summary -->
+            <div class="score-summary">
+              <div class="score-header">
+                <h2>Team Analysis</h2>
+                <div class="overall-score">
+                  <span class="score-label">Overall Score</span>
+                  <span class="score-value" id="overall-score">0</span>
+                  <span class="score-max">/100</span>
+                </div>
+              </div>
+              
+              <div class="score-breakdown">
+                <div class="score-metric">
+                  <div class="metric-info">
+                    <span class="metric-label">Type Coverage</span>
+                    <span class="metric-value" id="coverage-score">0%</span>
+                  </div>
+                  <div class="metric-bar">
+                    <div class="metric-fill" id="coverage-fill" style="width: 0%"></div>
+                  </div>
+                </div>
+                
+                <div class="score-metric">
+                  <div class="metric-info">
+                    <span class="metric-label">Defense Balance</span>
+                    <span class="metric-value" id="defense-score">0%</span>
+                  </div>
+                  <div class="metric-bar">
+                    <div class="metric-fill" id="defense-fill" style="width: 0%"></div>
+                  </div>
+                </div>
+                
+                <div class="score-metric">
+                  <div class="metric-info">
+                    <span class="metric-label">Type Diversity</span>
+                    <span class="metric-value" id="diversity-score">0%</span>
+                  </div>
+                  <div class="metric-bar">
+                    <div class="metric-fill" id="diversity-fill" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <!-- Team Sprites -->
-            <div class="team-sprites-section">
+            <!-- Team Members Table -->
+            <div class="team-table-section">
               <div class="section-title">
-                <span class="material-icons icon-primary">groups</span>
-                <h3>Team Composition</h3>
+                <span class="material-icons icon-primary">table_chart</span>
+                <h3>Team Members Analysis</h3>
               </div>
-              <div id="team-sprites" class="team-sprites-grid">
-                <!-- Team sprites will be displayed here -->
-              </div>
-            </div>
-
-            <!-- Analysis Grid -->
-            <div class="analysis-grid">
-              <!-- Detailed Team Analysis -->
-              <div class="analysis-column">
-                <div class="section-title">
-                  <span class="material-icons icon-primary">insights</span>
-                  <h3>Team Analysis</h3>
-                </div>
-                <div id="coverage-body" class="analysis-content">
-                  <!-- Detailed analysis will be populated here -->
-                </div>
-              </div>
-
-              <!-- Weaknesses -->
-              <div class="analysis-column">
-                <div class="section-title">
-                  <span class="material-icons icon-primary">warning</span>
-                  <h3>Defensive Profile</h3>
-                </div>
-                <div id="weakness-body" class="analysis-content">
-                  <!-- Weaknesses will be populated here -->
-                </div>
+              
+              <div class="table-container">
+                <table class="team-table" id="team-table">
+                  <thead>
+                    <tr>
+                      <th class="col-pokemon">Pokémon</th>
+                      <th class="col-types">Types</th>
+                      <th class="col-weakness">Weaknesses</th>
+                      <th class="col-resistance">Resistances</th>
+                      <th class="col-score">Individual Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="team-table-body">
+                    <!-- Table rows will be populated here -->
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <!-- Summary -->
-            <div class="summary-section">
+            <!-- Weakness Summary -->
+            <div class="weakness-summary">
               <div class="section-title">
-                <span class="material-icons icon-primary">assessment</span>
-                <h3>Team Summary</h3>
+                <span class="material-icons icon-primary">warning</span>
+                <h3>Team Weakness Summary</h3>
               </div>
-              <div id="summary-points" class="summary-grid">
-                <!-- Summary points will be added here -->
+              
+              <div class="weakness-grid">
+                <div class="weakness-category critical">
+                  <div class="category-header">
+                    <span class="material-icons">dangerous</span>
+                    <h4>Critical Weaknesses</h4>
+                    <span class="count-badge" id="critical-count">0</span>
+                  </div>
+                  <div class="category-types" id="critical-types">
+                    <!-- Critical weakness types will be added here -->
+                  </div>
+                </div>
+                
+                <div class="weakness-category moderate">
+                  <div class="category-header">
+                    <span class="material-icons">warning</span>
+                    <h4>Moderate Weaknesses</h4>
+                    <span class="count-badge" id="moderate-count">0</span>
+                  </div>
+                  <div class="category-types" id="moderate-types">
+                    <!-- Moderate weakness types will be added here -->
+                  </div>
+                </div>
+                
+                <div class="weakness-category strong">
+                  <div class="category-header">
+                    <span class="material-icons">shield</span>
+                    <h4>Strong Resistances</h4>
+                    <span class="count-badge" id="strong-count">0</span>
+                  </div>
+                  <div class="category-types" id="strong-types">
+                    <!-- Strong resistance types will be added here -->
+                  </div>
+                </div>
               </div>
             </div>
           </div>
