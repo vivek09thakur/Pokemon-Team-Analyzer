@@ -8,7 +8,7 @@
 :root {
   --primary-color: #C60000;     /* Pokémon Red */
   --secondary-color: #3B4CCA;   /* Pokémon Blue */
-  --accent-color: #78C850;      /* Pokémon Yellow */
+  --accent-color: #5076c8;      /* Pokémon Yellow */
   --accent-hover: #FF9900;      /* Orange for hover states */
   --background-color: #1A1A1A;  /* Very dark gray */
   --surface-color: #2D2D2D;     /* Dark gray for cards */
@@ -69,6 +69,7 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  gap: 25px;
 }
 
 /* Sidebar */
@@ -78,8 +79,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 25px;
-  padding: 25px;
   background: var(--surface-color);
+  border-radius: 5px;
 }
 
 .logo {
@@ -92,16 +93,16 @@ body {
 
 .logo-icon {
   font-size: 48px;
-  color: var(--type-grass);
-  background: rgba(255, 204, 0, 0.1);
+  color: var(--type-water);
+  background: rgba(0, 38, 255, 0.1);
   padding: 15px;
-  border-radius: 15px;
+  border-radius: 50%;
 }
 
 .logo h1 {
   font-size: 22px;
   font-weight: 700;
-  background: var(--type-grass);
+  background: var(--type-water);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -117,7 +118,7 @@ body {
 
 .sidebar-section {
   background: var(--surface-light);
-  border-radius: 15px;
+  border-radius: 5px;
   padding: 20px;
   border: 1px solid var(--border-color);
 }
@@ -194,8 +195,8 @@ body {
 
 /* Cards */
 .card {
-  background-color: var(--surface-color);
   padding: 30px;
+  border-radius: 10px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   width: 100%;
 }
@@ -222,20 +223,20 @@ body {
   color: var(--text-secondary);
 }
 
-/* Team Grid */
+/* Team Grid - IMPROVED */
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(150px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(3, minmax(200px, 1fr));
+  gap: 25px;
   margin-bottom: 20px;
 }
 
-/* Team Slot */
+/* Team Slot - IMPROVED */
 .team-slot {
   aspect-ratio: 1;
   background: var(--surface-light);
   border: 2px dashed var(--border-light);
-  border-radius: 15px;
+  border-radius: 7px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -244,18 +245,21 @@ body {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  padding: 25px;
+  min-height: 220px;
 }
 
 .team-slot:hover {
   border-color: var(--accent-color);
   background: var(--surface-color);
   transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
 }
 
 .team-slot.empty .add-icon {
-  font-size: 48px;
+  font-size: 35px;
   color: var(--text-tertiary);
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   transition: all 0.3s ease;
 }
 
@@ -265,14 +269,14 @@ body {
 }
 
 .team-slot.empty .slot-label {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .team-slot.filled {
   border: 2px solid var(--accent-color);
-  padding: 15px;
+  padding: 20px;
 }
 
 .slot-content {
@@ -285,39 +289,42 @@ body {
   text-align: center;
 }
 
+/* Larger images in slots - FIXED */
 .pokemon-sprite-large {
-  width: 80px;
-  height: 80px;
+  width: 56%;
+  height: auto;
   object-fit: contain;
-  margin-bottom: 10px;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  margin-bottom: 15px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+  flex-shrink: 0;
 }
 
 .pokemon-name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90%;
+  max-width: 100%;
 }
 
 .pokemon-types {
   display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 15px;
   flex-wrap: wrap;
   justify-content: center;
+  min-height: 32px;
 }
 
 .remove-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 28px;
-  height: 28px;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
   background: var(--error);
   border: none;
   border-radius: 50%;
@@ -325,13 +332,14 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.8;
   transition: all 0.3s ease;
   z-index: 10;
+  box-shadow: var(--shadow-sm);
 }
 
 .remove-btn .material-icons {
-  font-size: 16px;
+  font-size: 18px;
   color: white;
 }
 
@@ -349,34 +357,39 @@ body {
 .type-badge {
   background-color: #333;
   color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 11px;
+  padding: 8px 14px;
+  border-radius: 5px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
 }
 
 .type-badge.small {
-  padding: 4px 8px;
-  font-size: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  min-width: 60px;
 }
 
 /* Select Field */
 .select-field {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--text-primary);
-  padding: 12px;
-  font-size: 14px;
+  padding: 14px;
+  font-size: 15px;
   font-family: 'Poppins', sans-serif;
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23CCCCCC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 40px;
+  background-position: right 14px center;
+  padding-right: 45px;
   transition: all 0.3s ease;
   width: 100%;
 }
@@ -392,9 +405,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 20px;
-  border-radius: 12px;
-  font-size: 15px;
+  padding: 16px 24px;
+  border-radius: 14px;
+  font-size: 16px;
   font-weight: 600;
   font-family: 'Poppins', sans-serif;
   cursor: pointer;
@@ -404,13 +417,13 @@ body {
 }
 
 .btn-primary {
-  background: var(--type-grass);
+  background: var(--type-water);
   color: #000;
   box-shadow: var(--shadow-md);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
 
@@ -424,20 +437,20 @@ body {
   background: var(--surface-light);
   color: var(--text-primary);
   border-color: var(--accent-color);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
 }
 
 .btn-primary .material-icons,
 .btn-secondary .material-icons {
-  font-size: 20px;
-  margin-right: 8px;
+  font-size: 22px;
+  margin-right: 10px;
 }
 
 /* Score Summary */
 .score-summary {
   background: var(--surface-light);
-  border-radius: 15px;
-  padding: 25px;
+  border-radius: 20px;
+  padding: 30px;
   margin-bottom: 30px;
   border: 1px solid var(--border-color);
 }
@@ -446,9 +459,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 30px;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 25px;
 }
 
 .score-header h2 {
@@ -460,42 +473,42 @@ body {
 .overall-score {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: var(--surface-color);
-  padding: 15px 25px;
-  border-radius: 12px;
+  padding: 18px 28px;
+  border-radius: 10px;
   border: 2px solid var(--accent-color);
 }
 
 .score-label {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--text-secondary);
   font-weight: 600;
 }
 
 .score-value {
-  font-size: 42px;
+  font-size: 48px;
   font-weight: 800;
   color: var(--accent-color);
   line-height: 1;
 }
 
 .score-max {
-  font-size: 20px;
+  font-size: 22px;
   color: var(--text-secondary);
   font-weight: 600;
 }
 
 .score-breakdown {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
 }
 
 .score-metric {
   background: var(--surface-color);
-  padding: 20px;
-  border-radius: 12px;
+  padding: 24px;
+  border-radius: 16px;
   border: 1px solid var(--border-color);
 }
 
@@ -503,36 +516,36 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .metric-label {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-secondary);
   font-weight: 600;
 }
 
 .metric-value {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .metric-bar {
-  height: 10px;
+  height: 12px;
   background: var(--background-color);
-  border-radius: 5px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .metric-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
-  border-radius: 5px;
+  background: var(--type-grass);
+  border-radius: 6px;
   transition: width 0.5s ease;
 }
 
-/* Team Table */
+/* Team Table - FIXED ALIGNMENT */
 .team-table-section {
   margin-bottom: 30px;
 }
@@ -540,20 +553,20 @@ body {
 .section-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 15px;
+  margin-bottom: 25px;
 }
 
 .icon-primary {
-  font-size: 24px;
+  font-size: 28px;
   color: var(--accent-color);
   background: rgba(255, 204, 0, 0.1);
-  padding: 10px;
-  border-radius: 10px;
+  padding: 12px;
+  border-radius: 12px;
 }
 
 .section-title h3 {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -561,48 +574,56 @@ body {
 .table-container {
   overflow-x: auto;
   background: var(--surface-light);
-  border-radius: 15px;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 100%;
 }
 
 .team-table {
   width: 100%;
-  border-collapse: collapse;
-  min-width: 800px;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 900px;
+  table-layout: fixed;
 }
 
 .team-table thead {
   background: var(--surface-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .team-table th {
-  padding: 18px 20px;
+  padding: 22px;
   text-align: left;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 3px solid var(--border-color);
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .team-table th.col-pokemon {
-  width: 200px;
+  width: 220px;
+  min-width: 220px;
 }
 
 .team-table th.col-types {
-  width: 150px;
+  width: 130px;
+  min-width: 130px;
 }
 
-.team-table th.col-weakness {
-  width: 200px;
-}
-
+.team-table th.col-weakness,
 .team-table th.col-resistance {
   width: 200px;
+  min-width: 200px;
 }
 
 .team-table th.col-score {
-  width: 120px;
+
   text-align: center;
 }
 
@@ -616,52 +637,59 @@ body {
 }
 
 .team-table td {
-  padding: 20px;
+  padding: 22px;
   vertical-align: middle;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.team-table td.col-score {
+  text-align: center;
 }
 
 .team-table .pokemon-cell {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
 }
 
 .pokemon-cell img {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  flex-shrink: 0;
 }
 
 .pokemon-cell .pokemon-info {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .pokemon-cell .pokemon-name {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .pokemon-cell .pokemon-id {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
 .team-table .types-cell {
-  display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  min-height: 50px;
+  justify-content: center;
 }
 
 .team-table .weakness-cell,
 .team-table .resistance-cell {
-  display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  min-height: 50px;
 }
 
 .team-table .score-cell {
@@ -669,18 +697,18 @@ body {
 }
 
 .individual-score {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--accent-color);
   background: var(--surface-color);
-  padding: 10px 15px;
-  border-radius: 10px;
+  padding: 12px 18px;
+  border-radius: 12px;
   display: inline-block;
-  min-width: 70px;
+  min-width: 80px;
 }
 
 .team-table .type-badge {
-  margin: 2px;
+  margin: 3px;
 }
 
 /* Weakness Summary */
@@ -690,40 +718,40 @@ body {
 
 .weakness-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 25px;
 }
 
 .weakness-category {
   background: var(--surface-light);
-  border-radius: 15px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 15px;
   border: 1px solid var(--border-color);
 }
 
 .weakness-category.critical {
-  border-left: 4px solid var(--error);
+  border-left: 5px solid var(--error);
 }
 
 .weakness-category.moderate {
-  border-left: 4px solid var(--warning);
+  border-left: 5px solid var(--warning);
 }
 
 .weakness-category.strong {
-  border-left: 4px solid var(--success);
+  border-left: 5px solid var(--success);
 }
 
 .weakness-category .category-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .weakness-category .category-header h4 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -743,9 +771,9 @@ body {
 .count-badge {
   background: var(--surface-color);
   color: var(--text-primary);
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 20px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   margin-left: auto;
 }
@@ -753,7 +781,7 @@ body {
 .weakness-category .category-types {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 /* Popup Overlay */
@@ -1001,7 +1029,7 @@ body {
 @media (max-width: 1200px) {
   .container {
     flex-direction: column;
-    gap: 20px;
+    gap: 25px;
   }
   
   .sidebar {
@@ -1013,17 +1041,33 @@ body {
   
   .logo {
     flex: 1;
-    min-width: 200px;
+    min-width: 220px;
   }
   
   .sidebar-section {
     flex: 1;
-    min-width: 200px;
+    min-width: 220px;
   }
   
   .sidebar-action {
     width: 100%;
     flex-direction: row;
+  }
+}
+
+@media (max-width: 992px) {
+  .team-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  
+  .pokemon-sprite-large {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .team-table th,
+  .team-table td {
+    padding: 18px;
   }
 }
 
@@ -1052,15 +1096,20 @@ body {
   
   .team-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
   }
   
   .pokemon-sprite-large {
-    width: 60px;
-    height: 60px;
+    width: 90px;
+    height: 90px;
+  }
+  
+  .team-table {
+    min-width: 700px;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 576px) {
   body {
     padding: 10px;
   }
@@ -1071,29 +1120,37 @@ body {
   
   .team-grid {
     grid-template-columns: 1fr;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
   }
   
   .pokemon-sprite-large {
-    width: 50px;
-    height: 50px;
+    width: 110px;
+    height: 110px;
   }
   
   .section-title h3 {
-    font-size: 18px;
+    font-size: 20px;
   }
   
   .score-value {
-    font-size: 36px;
+    font-size: 42px;
   }
   
   .team-table th,
   .team-table td {
-    padding: 12px 15px;
+    padding: 15px;
   }
   
   .pokemon-cell img {
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
+  }
+  
+  .individual-score {
+    font-size: 24px;
+    padding: 10px 15px;
   }
 }
 
