@@ -182,7 +182,7 @@ class PokemonTeamAnalyzer {
       } else {
         // Fetch only first 151 for better performance
         const response = await fetch(
-          "https://pokeapi.co/api/v2/pokemon?limit=151"
+          "https://pokeapi.co/api/v2/pokemon?limit=900"
         );
         const data = await response.json();
         this.pokemonList = data.results;
