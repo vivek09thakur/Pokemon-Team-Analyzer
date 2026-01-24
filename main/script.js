@@ -178,52 +178,73 @@ class PokemonTeamAnalyzer {
 
   async loadPokemonData() {
     try {
-      // Try to load from localStorage first
-      const cached = localStorage.getItem("pokemonList");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        // Ensure it's an array with results property
-        if (Array.isArray(parsed)) {
-          this.pokemonList = parsed;
-        } else if (parsed && Array.isArray(parsed.results)) {
-          this.pokemonList = parsed.results;
-        } else {
-          // If format is unexpected, fetch fresh data
-          console.warn(
-            "Cached data has unexpected format, fetching fresh data"
-          );
-          await this.fetchFreshPokemonData();
-        }
-        console.log(
-          "Loaded cached Pokémon list:",
-          this.pokemonList.length,
-          "pokémon"
-        );
-      } else {
-        // Fetch fresh data
-        await this.fetchFreshPokemonData();
-      }
+      // Always fetch fresh data from API to ensure we have all Pokémon
+      console.log("Fetching fresh Pokémon data from API...");
+      await this.fetchFreshPokemonData();
     } catch (error) {
       console.error("Error loading Pokémon list:", error);
-      // Create a basic fallback list
-      this.pokemonList = this.createFallbackList();
+      // Try to load from cache as fallback
+      try {
+        const cached = localStorage.getItem("pokemonList");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            this.pokemonList = parsed;
+            console.log("Using cached Pokémon list:", this.pokemonList.length, "pokémon");
+          } else if (parsed && Array.isArray(parsed.results)) {
+            this.pokemonList = parsed.results;
+            console.log("Using cached Pokémon list:", this.pokemonList.length, "pokémon");
+          }
+        }
+      } catch (cacheError) {
+        console.error("Cache fallback also failed:", cacheError);
+      }
+      
+      // If still no data, use fallback
+      if (!this.pokemonList || this.pokemonList.length === 0) {
+        this.pokemonList = this.createFallbackList();
+      }
     }
   }
 
   // Helper method to fetch fresh data
   async fetchFreshPokemonData() {
     try {
-      // Fetch ALL Pokémon (1302 as of Gen 9)
-      const response = await fetch(
-        "https://pokeapi.co/api/v2/pokemon?limit=1302"
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      console.log("Fetching Pokémon data in batches...");
+      
+      // Fetch in batches to avoid timeout (400 per batch)
+      const batchSize = 400;
+      const totalPokemon = 1025; // Gen 1-9 approximate count
+      const allPokemon = [];
+      
+      // Fetch all batches in parallel for speed
+      const batchPromises = [];
+      for (let offset = 0; offset < totalPokemon; offset += batchSize) {
+        const limit = Math.min(batchSize, totalPokemon - offset);
+        const url = `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`;
+        batchPromises.push(
+          fetch(url)
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+              return response.json();
+            })
+            .then(data => data.results)
+            .catch(error => {
+              console.error(`Error fetching batch at offset ${offset}:`, error);
+              return [];
+            })
+        );
       }
-      const data = await response.json();
-
-      // Store just the results array
-      this.pokemonList = data.results;
+      
+      // Wait for all batches
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Combine all results
+      for (const batch of batchResults) {
+        allPokemon.push(...batch);
+      }
+      
+      this.pokemonList = allPokemon;
       localStorage.setItem("pokemonList", JSON.stringify(this.pokemonList));
       console.log("Loaded all Pokémon:", this.pokemonList.length, "pokémon");
     } catch (error) {
