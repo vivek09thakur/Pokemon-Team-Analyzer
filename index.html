@@ -14,144 +14,10 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" href="./pokeball-fevicon.ico" />
-
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "pokemon-red": "#dc0a2d",
-              "pokemon-blue": "#2a75bb",
-              "pokemon-yellow": "#ffcb05",
-            },
-            fontFamily: {
-              inter: ["Inter", "sans-serif"],
-            },
-          },
-        },
-      };
-    </script>
-
-    <style>
-      * {
-        font-family: "Inter", sans-serif;
-      }
-
-      .type-normal {
-        background-color: #a8a878;
-      }
-      .type-fire {
-        background-color: #f08030;
-      }
-      .type-water {
-        background-color: #6890f0;
-      }
-      .type-electric {
-        background-color: #f8d030;
-        color: #000;
-      }
-      .type-grass {
-        background-color: #78c850;
-      }
-      .type-ice {
-        background-color: #98d8d8;
-        color: #000;
-      }
-      .type-fighting {
-        background-color: #c03028;
-      }
-      .type-poison {
-        background-color: #a040a0;
-      }
-      .type-ground {
-        background-color: #e0c068;
-        color: #000;
-      }
-      .type-flying {
-        background-color: #a890f0;
-      }
-      .type-psychic {
-        background-color: #f85888;
-      }
-      .type-bug {
-        background-color: #a8b820;
-      }
-      .type-rock {
-        background-color: #b8a038;
-      }
-      .type-ghost {
-        background-color: #705898;
-      }
-      .type-dragon {
-        background-color: #7038f8;
-      }
-      .type-dark {
-        background-color: #705848;
-      }
-      .type-steel {
-        background-color: #b8b8d0;
-        color: #000;
-      }
-      .type-fairy {
-        background-color: #ee99ac;
-        color: #000;
-      }
-
-      /* Smooth transitions */
-      * {
-        transition: background-color 0.2s ease, border-color 0.2s ease;
-      }
-
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-      }
-      .dark ::-webkit-scrollbar-track {
-        background: #1f2937;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 4px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #4b5563;
-      }
-      /* Add to your existing styles */
-      #teamGrid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-      }
-
-      @media (min-width: 640px) {
-        #teamGrid {
-          grid-template-columns: repeat(3, 1fr);
-        }
-      }
-
-      @media (min-width: 1024px) {
-        #teamGrid {
-          grid-template-columns: repeat(3, 1fr);
-          gap: 1.5rem;
-        }
-      }
-
-      /* Make team slots square-ish */
-      .team-slot {
-        aspect-ratio: 1/1;
-        min-height: 0;
-      }
-      .slot-sprite{
-        width: 56% !important;
-        height: auto !important ;
-      }
-    </style>
+    <link rel="icon" href="./main/pokeball-fevicon.ico" />
+    <link rel="stylesheet" href="./main/style.css" />
   </head>
+
   <body class="bg-gray-50 dark:bg-gray-900 font-inter">
     <!-- Loading -->
     <div
@@ -320,11 +186,6 @@
           <div class="max-w-7xl mx-auto">
             <!-- Team Grid - Bigger on Desktop -->
             <div class="mb-8">
-              <h3
-                class="text-lg font-semibold text-gray-900 dark:text-white mb-4"
-              >
-                Your Team
-              </h3>
               <div
                 class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4"
                 id="teamGrid"
@@ -655,68 +516,8 @@
       </div>
     </div>
 
-    <!-- Theme & Mobile Script -->
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        // Theme
-        const prefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches;
-        if (prefersDark) {
-          document.documentElement.classList.add("dark");
-          document.getElementById("themeIcon").textContent = "light_mode";
-        }
-
-        document
-          .getElementById("themeToggle")
-          .addEventListener("click", function () {
-            document.documentElement.classList.toggle("dark");
-            const themeIcon = document.getElementById("themeIcon");
-            themeIcon.textContent = document.documentElement.classList.contains(
-              "dark"
-            )
-              ? "light_mode"
-              : "dark_mode";
-          });
-
-        // Mobile Sidebar
-        const menuToggle = document.getElementById("menuToggle");
-        const mobileOverlay = document.getElementById("mobileOverlay");
-        const sidebar = document.getElementById("sidebar");
-
-        function toggleSidebar() {
-          sidebar.classList.toggle("-translate-x-full");
-          mobileOverlay.classList.toggle("hidden");
-          document.body.style.overflow = sidebar.classList.contains(
-            "-translate-x-full"
-          )
-            ? ""
-            : "hidden";
-        }
-
-        menuToggle.addEventListener("click", toggleSidebar);
-        mobileOverlay.addEventListener("click", toggleSidebar);
-
-        // Close on escape
-        document.addEventListener("keydown", (e) => {
-          if (
-            e.key === "Escape" &&
-            !sidebar.classList.contains("-translate-x-full")
-          ) {
-            toggleSidebar();
-          }
-        });
-
-        // Close on resize to desktop
-        window.addEventListener("resize", () => {
-          if (window.innerWidth >= 1024) {
-            sidebar.classList.remove("-translate-x-full");
-            mobileOverlay.classList.add("hidden");
-            document.body.style.overflow = "";
-          }
-        });
-      });
-    </script>
-    <script src="script.js"></script>
+    <script src="./main/script.js"></script>
+    <script src="./main/script2.js"></script>
+    <script src="./main/tailwind.js"></script>
   </body>
 </html>

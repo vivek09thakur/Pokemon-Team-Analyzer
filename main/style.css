@@ -1,0 +1,115 @@
+ * {
+        font-family: "Inter", sans-serif;
+      }
+
+      .type-normal {
+        background-color: #a8a878;
+      }
+      .type-fire {
+        background-color: #f08030;
+      }
+      .type-water {
+        background-color: #6890f0;
+      }
+      .type-electric {
+        background-color: #f8d030;
+        color: #000;
+      }
+      .type-grass {
+        background-color: #78c850;
+      }
+      .type-ice {
+        background-color: #98d8d8;
+        color: #000;
+      }
+      .type-fighting {
+        background-color: #c03028;
+      }
+      .type-poison {
+        background-color: #a040a0;
+      }
+      .type-ground {
+        background-color: #e0c068;
+        color: #000;
+      }
+      .type-flying {
+        background-color: #a890f0;
+      }
+      .type-psychic {
+        background-color: #f85888;
+      }
+      .type-bug {
+        background-color: #a8b820;
+      }
+      .type-rock {
+        background-color: #b8a038;
+      }
+      .type-ghost {
+        background-color: #705898;
+      }
+      .type-dragon {
+        background-color: #7038f8;
+      }
+      .type-dark {
+        background-color: #705848;
+      }
+      .type-steel {
+        background-color: #b8b8d0;
+        color: #000;
+      }
+      .type-fairy {
+        background-color: #ee99ac;
+        color: #000;
+      }
+
+      /* Smooth transitions */
+      * {
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #1f2937;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+      }
+      /* Add to your existing styles */
+      #teamGrid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      @media (min-width: 640px) {
+        #teamGrid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      @media (min-width: 1024px) {
+        #teamGrid {
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.5rem;
+        }
+      }
+
+      /* Make team slots square-ish */
+      .team-slot {
+        aspect-ratio: 1/1;
+        min-height: 0;
+      }
+      .slot-sprite{
+        width: 56% !important;
+        height: auto !important ;
+      }
