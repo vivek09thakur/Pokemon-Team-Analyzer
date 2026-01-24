@@ -1,240 +1,718 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pokémon Team Analyzer</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/icon?family=Material+Icons"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="style.css" />
-    <link rel="icon" type="image/x-icon" href="/pokeball-fevicon.ico" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="./pokeball-fevicon.ico" />
+
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "pokemon-red": "#dc0a2d",
+              "pokemon-blue": "#2a75bb",
+              "pokemon-yellow": "#ffcb05",
+            },
+            fontFamily: {
+              inter: ["Inter", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      * {
+        font-family: "Inter", sans-serif;
+      }
+
+      .type-normal {
+        background-color: #a8a878;
+      }
+      .type-fire {
+        background-color: #f08030;
+      }
+      .type-water {
+        background-color: #6890f0;
+      }
+      .type-electric {
+        background-color: #f8d030;
+        color: #000;
+      }
+      .type-grass {
+        background-color: #78c850;
+      }
+      .type-ice {
+        background-color: #98d8d8;
+        color: #000;
+      }
+      .type-fighting {
+        background-color: #c03028;
+      }
+      .type-poison {
+        background-color: #a040a0;
+      }
+      .type-ground {
+        background-color: #e0c068;
+        color: #000;
+      }
+      .type-flying {
+        background-color: #a890f0;
+      }
+      .type-psychic {
+        background-color: #f85888;
+      }
+      .type-bug {
+        background-color: #a8b820;
+      }
+      .type-rock {
+        background-color: #b8a038;
+      }
+      .type-ghost {
+        background-color: #705898;
+      }
+      .type-dragon {
+        background-color: #7038f8;
+      }
+      .type-dark {
+        background-color: #705848;
+      }
+      .type-steel {
+        background-color: #b8b8d0;
+        color: #000;
+      }
+      .type-fairy {
+        background-color: #ee99ac;
+        color: #000;
+      }
+
+      /* Smooth transitions */
+      * {
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #1f2937;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+      }
+      /* Add to your existing styles */
+      #teamGrid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      @media (min-width: 640px) {
+        #teamGrid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      @media (min-width: 1024px) {
+        #teamGrid {
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.5rem;
+        }
+      }
+
+      /* Make team slots square-ish */
+      .team-slot {
+        aspect-ratio: 1/1;
+        min-height: 0;
+      }
+    </style>
   </head>
-  <body>
-    <!-- Mobile Header -->
-    <header class="mobile-header">
-      <div class="mobile-header-content">
-        <button class="menu-toggle" id="menuToggle">
-          <span class="material-icons">menu</span>
-        </button>
-        <div class="mobile-logo">
-          <span class="material-icons">catching_pokemon</span>
-          <span>Team Analyzer</span>
-        </div>
+  <body class="bg-gray-50 dark:bg-gray-900 font-inter">
+    <!-- Loading -->
+    <div
+      id="loadingOverlay"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 p-6 rounded-lg flex flex-col items-center"
+      >
+        <div
+          class="animate-spin rounded-full h-10 w-10 border-3 border-pokemon-red border-t-transparent mb-3"
+        ></div>
+        <p class="text-gray-700 dark:text-gray-300">Loading Pokémon...</p>
       </div>
-    </header>
+    </div>
 
-    <!-- Mobile Overlay -->
-    <div class="mobile-overlay" id="mobileOverlay"></div>
+    <!-- Main Layout -->
+    <div class="flex h-screen overflow-hidden">
+      <!-- Mobile Overlay -->
+      <div
+        id="mobileOverlay"
+        class="fixed inset-0 bg-black/50 z-30 lg:hidden hidden"
+      ></div>
 
-    <!-- Main Container -->
-    <div class="app-container">
       <!-- Sidebar -->
-      <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-          <div class="logo">
-            <span class="material-icons logo-icon">catching_pokemon</span>
-            <h1>Pokémon Team Analyzer</h1>
+      <aside
+        id="sidebar"
+        class="bg-white dark:bg-gray-800 w-64 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full fixed lg:relative z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-300"
+      >
+        <!-- Sidebar Header -->
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex items-center space-x-3">
+            <div
+              class="w-10 h-10 bg-pokemon-red rounded-full flex items-center justify-center"
+            >
+              <span class="material-icons text-white">catching_pokemon</span>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-gray-900 dark:text-white">
+                Team Analyzer
+              </h1>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Build & Analyze
+              </p>
+            </div>
           </div>
-          <p class="subtitle">Build. Analyze. Dominate.</p>
         </div>
 
-        <div class="sidebar-content">
-          <div class="control-group">
-            <label for="teamSize">Team Size</label>
-            <select id="teamSize" class="control-select">
-              <option value="3">3 Pokémon</option>
-              <option value="4">4 Pokémon</option>
-              <option value="5">5 Pokémon</option>
-              <option value="6" selected>6 Pokémon</option>
-            </select>
+        <!-- Sidebar Content -->
+        <div class="flex-1 p-5 overflow-y-auto">
+          <div class="space-y-5">
+            <div>
+              <label
+                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+                >Team Size</label
+              >
+              <select
+                id="teamSize"
+                class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-pokemon-red focus:border-transparent"
+              >
+                <option value="3">3 Pokémon</option>
+                <option value="4">4 Pokémon</option>
+                <option value="5">5 Pokémon</option>
+                <option value="6" selected>6 Pokémon</option>
+              </select>
+            </div>
+
+            <div class="hidden lg:block space-y-3">
+              <button
+                id="analyzeBtn"
+                class="w-full bg-pokemon-red hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+              >
+                <span class="material-icons">analytics</span>
+                <span>Analyze Team</span>
+              </button>
+              <button
+                id="resetBtn"
+                class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-300 font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+              >
+                <span class="material-icons">refresh</span>
+                <span>Reset Team</span>
+              </button>
+            </div>
           </div>
+        </div>
 
-
-
-          <div class="action-buttons">
-            <button id="analyzeBtn" class="btn btn-primary">
-              <span class="material-icons">analytics</span>
-              Analyze Team
-            </button>
-            <button id="resetBtn" class="btn btn-secondary">
-              <span class="material-icons">refresh</span>
-              Reset All
-            </button>
+        <div class="p-5 border-t border-gray-200 dark:border-gray-700">
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            <p>Powered by PokéAPI</p>
           </div>
         </div>
       </aside>
 
       <!-- Main Content -->
-      <main class="main-content">
-        <!-- Team Builder -->
-        <section class="content-section team-section">
-          <div class="section-header">
-            <h2>Your Team</h2>
-            <p class="section-description">
-              Click on empty slots to add Pokémon
-            </p>
-          </div>
-          <div class="team-grid" id="teamGrid"></div>
-        </section>
-
-        <!-- Analysis Results -->
-        <section
-          class="content-section results-section hidden"
-          id="resultsSection"
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Header -->
+        <header
+          class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-5 py-3 flex items-center justify-between"
         >
-          <!-- Overall Score -->
-          <div class="score-card">
-            <div class="score-header">
-              <h3>Team Analysis</h3>
-              <div class="overall-score">
-                <span class="score-label">Overall Score</span>
-                <span class="score-number" id="overallScore">0</span>
-                <span class="score-divider">/100</span>
+          <div class="flex items-center space-x-4">
+            <button
+              id="menuToggle"
+              class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <span class="material-icons text-gray-700 dark:text-gray-300"
+                >menu</span
+              >
+            </button>
+
+            <div>
+              <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+                Team Builder
+              </h2>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Click on empty slots to add Pokémon
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-4">
+            <button
+              id="analyzeBtnMobile"
+              class="lg:hidden bg-pokemon-red hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors"
+            >
+              <span class="material-icons text-sm">analytics</span>
+              <span>Analyze</span>
+            </button>
+
+            <div class="hidden md:flex items-center space-x-6">
+              <div class="text-center">
+                <div class="text-xl font-bold text-pokemon-red" id="teamCount">
+                  0
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  Pokémon
+                </div>
+              </div>
+              <div class="text-center">
+                <div
+                  class="text-xl font-bold text-gray-800 dark:text-gray-300"
+                  id="typeCount"
+                >
+                  0
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  Unique Types
+                </div>
               </div>
             </div>
 
-            <div class="score-metrics">
-              <div class="metric">
-                <div class="metric-info">
-                  <span class="metric-name">Type Coverage</span>
-                  <span class="metric-value" id="coverageScore">0%</span>
+            <button
+              id="themeToggle"
+              class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <span
+                id="themeIcon"
+                class="material-icons text-gray-700 dark:text-gray-300"
+                >dark_mode</span
+              >
+            </button>
+          </div>
+        </header>
+
+        <!-- Main Dashboard - Optimized for Desktop -->
+        <main class="flex-1 overflow-auto p-5">
+          <div class="max-w-7xl mx-auto">
+            <!-- Team Grid - Bigger on Desktop -->
+            <div class="mb-8">
+              <h3
+                class="text-lg font-semibold text-gray-900 dark:text-white mb-4"
+              >
+                Your Team
+              </h3>
+              <div
+                class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4"
+                id="teamGrid"
+              >
+                <!-- Team slots will be generated here -->
+              </div>
+            </div>
+
+            <!-- Analysis Results -->
+            <div id="resultsSection" class="hidden space-y-6">
+              <!-- Score Card -->
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
+              >
+                <div
+                  class="flex flex-col md:flex-row md:items-center justify-between mb-6"
+                >
+                  <h3
+                    class="text-xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0"
+                  >
+                    Team Analysis
+                  </h3>
+                  <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        Overall Score
+                      </div>
+                      <div class="flex items-baseline">
+                        <span
+                          id="overallScore"
+                          class="text-3xl font-bold text-gray-900 dark:text-white"
+                          >0</span
+                        >
+                        <span
+                          class="text-lg text-gray-500 dark:text-gray-400 ml-1"
+                          >/100</span
+                        >
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="progress-bar">
-                  <div
-                    class="progress-fill"
-                    id="coverageFill"
-                    style="width: 0%"
-                  ></div>
+
+                <!-- Metrics -->
+                <div class="space-y-5">
+                  <div>
+                    <div class="flex justify-between mb-2">
+                      <span class="font-medium text-gray-700 dark:text-gray-300"
+                        >Type Coverage</span
+                      >
+                      <span
+                        id="coverageScore"
+                        class="font-bold text-pokemon-red"
+                        >0%</span
+                      >
+                    </div>
+                    <div
+                      class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden"
+                    >
+                      <div
+                        id="coverageFill"
+                        class="h-full bg-pokemon-red rounded-full transition-all duration-500"
+                        style="width: 0%"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="flex justify-between mb-2">
+                      <span class="font-medium text-gray-700 dark:text-gray-300"
+                        >Defense Balance</span
+                      >
+                      <span
+                        id="defenseScore"
+                        class="font-bold text-pokemon-blue"
+                        >0%</span
+                      >
+                    </div>
+                    <div
+                      class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden"
+                    >
+                      <div
+                        id="defenseFill"
+                        class="h-full bg-pokemon-blue rounded-full transition-all duration-500"
+                        style="width: 0%"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="flex justify-between mb-2">
+                      <span class="font-medium text-gray-700 dark:text-gray-300"
+                        >Type Diversity</span
+                      >
+                      <span
+                        id="diversityScore"
+                        class="font-bold text-green-600 dark:text-green-400"
+                        >0%</span
+                      >
+                    </div>
+                    <div
+                      class="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden"
+                    >
+                      <div
+                        id="diversityFill"
+                        class="h-full bg-green-500 rounded-full transition-all duration-500"
+                        style="width: 0%"
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="metric">
-                <div class="metric-info">
-                  <span class="metric-name">Defense Balance</span>
-                  <span class="metric-value" id="defenseScore">0%</span>
+
+              <!-- Team Members Table -->
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
+              >
+                <div
+                  class="px-6 py-4 border-b border-gray-200 dark:border-gray-700"
+                >
+                  <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                    Team Members Analysis
+                  </h3>
                 </div>
-                <div class="progress-bar">
-                  <div
-                    class="progress-fill"
-                    id="defenseFill"
-                    style="width: 0%"
-                  ></div>
+                <div class="overflow-x-auto">
+                  <table class="w-full">
+                    <thead>
+                      <tr class="bg-gray-50 dark:bg-gray-900">
+                        <th
+                          class="text-left py-4 px-6 font-semibold text-gray-700 dark:text-gray-300"
+                        >
+                          Pokémon
+                        </th>
+                        <th
+                          class="text-left py-4 px-6 font-semibold text-gray-700 dark:text-gray-300"
+                        >
+                          Types
+                        </th>
+                        <th
+                          class="text-left py-4 px-6 font-semibold text-gray-700 dark:text-gray-300"
+                        >
+                          Weaknesses
+                        </th>
+                        <th
+                          class="text-left py-4 px-6 font-semibold text-gray-700 dark:text-gray-300"
+                        >
+                          Resistances
+                        </th>
+                        <th
+                          class="text-left py-4 px-6 font-semibold text-gray-700 dark:text-gray-300"
+                        >
+                          Score
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="teamTableBody">
+                      <!-- Will be populated -->
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <div class="metric">
-                <div class="metric-info">
-                  <span class="metric-name">Type Diversity</span>
-                  <span class="metric-value" id="diversityScore">0%</span>
-                </div>
-                <div class="progress-bar">
+
+              <!-- Weakness Summary -->
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
+              >
+                <h3
+                  class="text-xl font-bold text-gray-900 dark:text-white mb-6"
+                >
+                  Team Weakness Summary
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <!-- Critical -->
                   <div
-                    class="progress-fill"
-                    id="diversityFill"
-                    style="width: 0%"
-                  ></div>
+                    class="border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20 p-5 rounded-r-lg"
+                  >
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="flex items-center space-x-2">
+                        <span class="material-icons text-red-600"
+                          >dangerous</span
+                        >
+                        <h4 class="font-bold text-gray-900 dark:text-white">
+                          Critical Weaknesses (4x)
+                        </h4>
+                      </div>
+                      <span
+                        id="criticalCount"
+                        class="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold"
+                        >0</span
+                      >
+                    </div>
+                    <div id="criticalTypes" class="flex flex-wrap gap-2">
+                      <!-- Types here -->
+                    </div>
+                  </div>
+
+                  <!-- Major -->
+                  <div
+                    class="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-5 rounded-r-lg"
+                  >
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="flex items-center space-x-2">
+                        <span class="material-icons text-yellow-600"
+                          >warning</span
+                        >
+                        <h4 class="font-bold text-gray-900 dark:text-white">
+                          Major Weaknesses (2x)
+                        </h4>
+                      </div>
+                      <span
+                        id="moderateCount"
+                        class="bg-yellow-600 text-white px-3 py-1 rounded-full text-sm font-bold"
+                        >0</span
+                      >
+                    </div>
+                    <div id="moderateTypes" class="flex flex-wrap gap-2">
+                      <!-- Types here -->
+                    </div>
+                  </div>
+
+                  <!-- Strong -->
+                  <div
+                    class="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 p-5 rounded-r-lg"
+                  >
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="flex items-center space-x-2">
+                        <span class="material-icons text-green-600"
+                          >shield</span
+                        >
+                        <h4 class="font-bold text-gray-900 dark:text-white">
+                          Strong Resistances
+                        </h4>
+                      </div>
+                      <span
+                        id="strongCount"
+                        class="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-bold"
+                        >0</span
+                      >
+                    </div>
+                    <div id="strongTypes" class="flex flex-wrap gap-2">
+                      <!-- Types here -->
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- Team Members -->
-          <div class="team-analysis">
-            <h3>Team Members Analysis</h3>
-            <div class="table-wrapper">
-              <table class="team-table">
-                <thead>
-                  <tr>
-                    <th>Pokémon</th>
-                    <th>Types</th>
-                    <th>Weaknesses</th>
-                    <th>Resistances</th>
-                    <th>Score</th>
-                  </tr>
-                </thead>
-                <tbody id="teamTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Weakness Summary -->
-          <div class="weakness-summary">
-            <h3>Team Weakness Summary</h3>
-            <div class="weakness-grid">
-              <div class="weakness-card critical">
-                <div class="card-header">
-                  <span class="material-icons">dangerous</span>
-                  <h4>Critical Weaknesses (4x)</h4>
-                  <span class="card-badge" id="criticalCount">0</span>
-                </div>
-                <div class="type-container" id="criticalTypes"></div>
-              </div>
-              <div class="weakness-card moderate">
-                <div class="card-header">
-                  <span class="material-icons">warning</span>
-                  <h4>Major Weaknesses (2x)</h4>
-                  <span class="card-badge" id="moderateCount">0</span>
-                </div>
-                <div class="type-container" id="moderateTypes"></div>
-              </div>
-              <div class="weakness-card strong">
-                <div class="card-header">
-                  <span class="material-icons">shield</span>
-                  <h4>Strong Resistances</h4>
-                  <span class="card-badge" id="strongCount">0</span>
-                </div>
-                <div class="type-container" id="strongTypes"></div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+        </main>
+      </div>
     </div>
 
     <!-- Add Pokémon Modal -->
-    <div class="modal" id="addModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Add Pokémon</h3>
-          <button class="close-btn" id="closeModal">
-            <span class="material-icons">close</span>
+    <div
+      id="addModal"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-2xl"
+      >
+        <!-- Modal Header -->
+        <div
+          class="border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between"
+        >
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+            Add Pokémon
+          </h3>
+          <button
+            id="closeModal"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <span class="material-icons text-gray-700 dark:text-gray-300"
+              >close</span
+            >
           </button>
         </div>
 
-        <div class="modal-body">
-          <div class="search-container">
-            <input
-              type="text"
-              id="searchInput"
-              class="search-input"
-              placeholder="Search Pokémon by name..."
-              autocomplete="off"
-            />
-            <div class="search-results" id="searchResults"></div>
+        <!-- Modal Body -->
+        <div class="p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
+          <!-- Search -->
+          <div class="mb-6">
+            <div class="relative">
+              <input
+                type="text"
+                id="searchInput"
+                class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-pokemon-red focus:border-transparent"
+                placeholder="Search Pokémon by name..."
+                autocomplete="off"
+              />
+              <span
+                class="material-icons absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                >search</span
+              >
+            </div>
+            <div
+              id="searchResults"
+              class="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"
+            >
+              <!-- Results here -->
+            </div>
           </div>
 
-          <div class="selected-preview hidden" id="selectedPreview">
-            <h4>Selected Pokémon</h4>
-            <div class="preview-content">
-              <img id="selectedSprite" src="" alt="" />
-              <div class="preview-info">
-                <h5 id="selectedName"></h5>
-                <div class="preview-types" id="selectedTypes"></div>
+          <!-- Selected Preview -->
+          <div id="selectedPreview" class="hidden">
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-5">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                  <img id="selectedSprite" src="" alt="" class="w-20 h-20" />
+                  <div>
+                    <h5
+                      id="selectedName"
+                      class="text-xl font-bold text-gray-900 dark:text-white mb-2"
+                    ></h5>
+                    <div id="selectedTypes" class="flex space-x-3">
+                      <!-- Types here -->
+                    </div>
+                  </div>
+                </div>
+                <button
+                  id="addToTeam"
+                  class="bg-pokemon-red hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center space-x-2 transition-colors"
+                >
+                  <span class="material-icons">add</span>
+                  <span>Add to Team</span>
+                </button>
               </div>
             </div>
-            <button class="btn btn-primary" id="addToTeam">
-              <span class="material-icons">add</span>
-              Add to Team
-            </button>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Theme & Mobile Script -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Theme
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        if (prefersDark) {
+          document.documentElement.classList.add("dark");
+          document.getElementById("themeIcon").textContent = "light_mode";
+        }
+
+        document
+          .getElementById("themeToggle")
+          .addEventListener("click", function () {
+            document.documentElement.classList.toggle("dark");
+            const themeIcon = document.getElementById("themeIcon");
+            themeIcon.textContent = document.documentElement.classList.contains(
+              "dark"
+            )
+              ? "light_mode"
+              : "dark_mode";
+          });
+
+        // Mobile Sidebar
+        const menuToggle = document.getElementById("menuToggle");
+        const mobileOverlay = document.getElementById("mobileOverlay");
+        const sidebar = document.getElementById("sidebar");
+
+        function toggleSidebar() {
+          sidebar.classList.toggle("-translate-x-full");
+          mobileOverlay.classList.toggle("hidden");
+          document.body.style.overflow = sidebar.classList.contains(
+            "-translate-x-full"
+          )
+            ? ""
+            : "hidden";
+        }
+
+        menuToggle.addEventListener("click", toggleSidebar);
+        mobileOverlay.addEventListener("click", toggleSidebar);
+
+        // Close on escape
+        document.addEventListener("keydown", (e) => {
+          if (
+            e.key === "Escape" &&
+            !sidebar.classList.contains("-translate-x-full")
+          ) {
+            toggleSidebar();
+          }
+        });
+
+        // Close on resize to desktop
+        window.addEventListener("resize", () => {
+          if (window.innerWidth >= 1024) {
+            sidebar.classList.remove("-translate-x-full");
+            mobileOverlay.classList.add("hidden");
+            document.body.style.overflow = "";
+          }
+        });
+      });
+    </script>
     <script src="script.js"></script>
   </body>
 </html>
