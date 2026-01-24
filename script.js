@@ -169,7 +169,11 @@ class PokemonTeamAnalyzer {
   async init() {
     this.setupEventListeners();
     this.initTeamGrid();
-    this.loadPokemonData();
+
+    // Load Pokémon data in background but don't wait for it
+    this.loadPokemonData().catch((error) => {
+      console.error("Failed to load Pokémon data:", error);
+    });
   }
 
   async loadPokemonData() {
@@ -177,21 +181,54 @@ class PokemonTeamAnalyzer {
       // Try to load from localStorage first
       const cached = localStorage.getItem("pokemonList");
       if (cached) {
-        this.pokemonList = JSON.parse(cached);
-        console.log("Loaded cached Pokémon list");
-      } else {
-        // Fetch only first 151 for better performance
-        const response = await fetch(
-          "https://pokeapi.co/api/v2/pokemon?limit=900"
+        const parsed = JSON.parse(cached);
+        // Ensure it's an array with results property
+        if (Array.isArray(parsed)) {
+          this.pokemonList = parsed;
+        } else if (parsed && Array.isArray(parsed.results)) {
+          this.pokemonList = parsed.results;
+        } else {
+          // If format is unexpected, fetch fresh data
+          console.warn(
+            "Cached data has unexpected format, fetching fresh data"
+          );
+          await this.fetchFreshPokemonData();
+        }
+        console.log(
+          "Loaded cached Pokémon list:",
+          this.pokemonList.length,
+          "pokémon"
         );
-        const data = await response.json();
-        this.pokemonList = data.results;
-        localStorage.setItem("pokemonList", JSON.stringify(this.pokemonList));
+      } else {
+        // Fetch fresh data
+        await this.fetchFreshPokemonData();
       }
     } catch (error) {
       console.error("Error loading Pokémon list:", error);
       // Create a basic fallback list
       this.pokemonList = this.createFallbackList();
+    }
+  }
+
+  // Helper method to fetch fresh data
+  async fetchFreshPokemonData() {
+    try {
+      // Fetch ALL Pokémon (1302 as of Gen 9)
+      const response = await fetch(
+        "https://pokeapi.co/api/v2/pokemon?limit=1302"
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+
+      // Store just the results array
+      this.pokemonList = data.results;
+      localStorage.setItem("pokemonList", JSON.stringify(this.pokemonList));
+      console.log("Loaded all Pokémon:", this.pokemonList.length, "pokémon");
+    } catch (error) {
+      console.error("Error fetching fresh Pokémon data:", error);
+      throw error;
     }
   }
 
@@ -313,7 +350,7 @@ class PokemonTeamAnalyzer {
                 </button>
                 <div class="flex flex-col items-center h-full justify-between">
                     <img src="${this.getPokemonSprite(pokemon.id)}" 
-                         class="w-20 h-20 mb-3"
+                         class="w-20 h-20 mb-3 slot-sprite"
                          alt="${pokemon.name}"
                          onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${
                            pokemon.id
@@ -382,15 +419,30 @@ class PokemonTeamAnalyzer {
 
       try {
         resultsContainer.innerHTML = `
-                    <div class="col-span-full py-8 text-center">
-                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pokemon-red mx-auto mb-2"></div>
-                        <div class="text-gray-500 dark:text-gray-400">Searching...</div>
-                    </div>
-                `;
+        <div class="col-span-full py-8 text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pokemon-red mx-auto mb-2"></div>
+          <div class="text-gray-500 dark:text-gray-400">Searching...</div>
+        </div>
+      `;
 
-        // Filter from list
+        // Wait for pokemonList to be loaded if it's empty
+        if (!this.pokemonList || this.pokemonList.length === 0) {
+          await this.loadPokemonData();
+        }
+
+        // Check if pokemonList is an array
+        if (!Array.isArray(this.pokemonList)) {
+          console.error("pokemonList is not an array:", this.pokemonList);
+          resultsContainer.innerHTML =
+            '<div class="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">Error: Pokémon data not loaded properly</div>';
+          return;
+        }
+
+        // Filter from list - SAFE now
         const filtered = this.pokemonList
-          .filter((p) => p.name.toLowerCase().includes(searchTerm))
+          .filter(
+            (p) => p && p.name && p.name.toLowerCase().includes(searchTerm)
+          )
           .slice(0, 12);
 
         await this.displaySearchResults(filtered);
@@ -398,7 +450,7 @@ class PokemonTeamAnalyzer {
         if (error.name === "AbortError") return;
         console.error("Search error:", error);
         resultsContainer.innerHTML =
-          '<div class="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">Error searching</div>';
+          '<div class="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">Error searching. Please try again.</div>';
       }
     }, 300);
   }
@@ -492,7 +544,17 @@ class PokemonTeamAnalyzer {
     }
 
     try {
-      const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+      // Handle special characters in Pokémon names (like Ho-oh)
+      const formattedName = name.toLowerCase().replace(/[^a-z0-9-]/g, "");
+
+      const response = await fetch(
+        `https://pokeapi.co/api/v2/pokemon/${formattedName}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Pokémon not found: ${name}`);
+      }
+
       const data = await response.json();
 
       const pokemonData = {
