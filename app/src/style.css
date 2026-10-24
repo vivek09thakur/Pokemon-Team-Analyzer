@@ -1,0 +1,623 @@
+@import "tailwindcss";
+
+/* Dark mode is toggled via .dark on <html> (ui.js seeds it from prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------- Google M3 "classic blue" scheme ---------- */
+:root {
+  --sans: Roboto, system-ui, "Segoe UI", sans-serif;
+  --heading: "Google Sans", Roboto, system-ui, sans-serif;
+  --mono: "Roboto Mono", ui-monospace, Consolas, monospace;
+
+  --md-primary: #0b57d0;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #d3e3fd;
+  --md-on-primary-container: #041e49;
+  --md-secondary: #00639b;
+  --md-secondary-container: #c2e7ff;
+  --md-on-secondary-container: #001d35;
+  --md-success: #146c2e;
+  --md-success-container: #c4eed0;
+  --md-on-success-container: #072711;
+  --md-warning: #8a5100;
+  --md-warning-container: #ffdf9e;
+  --md-on-warning-container: #2b1700;
+  --md-error: #b3261e;
+  --md-on-error: #ffffff;
+  --md-error-container: #f9dedc;
+  --md-on-error-container: #410e0b;
+
+  --md-surface: #ffffff;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #f8fafd;
+  --md-surface-container: #f0f4f9;
+  --md-surface-container-high: #e9eef6;
+  --md-surface-container-highest: #dde3ea;
+  --md-on-surface: #1f1f1f;
+  --md-on-surface-variant: #444746;
+  --md-outline: #747775;
+  --md-outline-variant: #c4c7c5;
+  --md-scrim: rgba(0, 0, 0, 0.4);
+
+  --md-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-shadow-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  --md-shape-xs: 4px;
+  --md-shape-sm: 8px;
+  --md-shape-md: 12px;
+  --md-shape-lg: 16px;
+  --md-shape-xl: 28px;
+
+  color-scheme: light;
+}
+
+:root.dark {
+  --md-primary: #a8c7fa;
+  --md-on-primary: #062e6f;
+  --md-primary-container: #0842a0;
+  --md-on-primary-container: #d3e3fd;
+  --md-secondary: #7fcfff;
+  --md-secondary-container: #004a77;
+  --md-on-secondary-container: #c2e7ff;
+  --md-success: #6dd58c;
+  --md-success-container: #0f5223;
+  --md-on-success-container: #c4eed0;
+  --md-warning: #f5c343;
+  --md-warning-container: #5c4300;
+  --md-on-warning-container: #ffdf9e;
+  --md-error: #f2b8b5;
+  --md-on-error: #601410;
+  --md-error-container: #8c1d18;
+  --md-on-error-container: #f9dedc;
+
+  --md-surface: #131314;
+  --md-surface-container-lowest: #0e0e0e;
+  --md-surface-container-low: #1b1b1b;
+  --md-surface-container: #1e1f20;
+  --md-surface-container-high: #282a2c;
+  --md-surface-container-highest: #333537;
+  --md-on-surface: #e3e3e3;
+  --md-on-surface-variant: #c4c7c5;
+  --md-outline: #8e918f;
+  --md-outline-variant: #444746;
+  --md-scrim: rgba(0, 0, 0, 0.6);
+
+  --md-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 3px 1px rgba(0, 0, 0, 0.3);
+  --md-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.6), 0 2px 6px 2px rgba(0, 0, 0, 0.3);
+  --md-shadow-3: 0 4px 8px 3px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+/* Legacy aliases still referenced by a few rules below */
+:root {
+  --text: var(--md-on-surface-variant);
+  --text-h: var(--md-on-surface);
+  --bg: var(--md-surface);
+  --border: var(--md-outline-variant);
+}
+
+/* Expose roles as Tailwind utilities (bg-surface, text-on-surface, border-outline, ...) */
+@theme inline {
+  --color-primary: var(--md-primary);
+  --color-on-primary: var(--md-on-primary);
+  --color-primary-container: var(--md-primary-container);
+  --color-on-primary-container: var(--md-on-primary-container);
+  --color-secondary: var(--md-secondary);
+  --color-secondary-container: var(--md-secondary-container);
+  --color-on-secondary-container: var(--md-on-secondary-container);
+  --color-surface: var(--md-surface);
+  --color-surface-lowest: var(--md-surface-container-lowest);
+  --color-surface-low: var(--md-surface-container-low);
+  --color-surface-container: var(--md-surface-container);
+  --color-surface-high: var(--md-surface-container-high);
+  --color-surface-highest: var(--md-surface-container-highest);
+  --color-on-surface: var(--md-on-surface);
+  --color-on-surface-variant: var(--md-on-surface-variant);
+  --color-outline: var(--md-outline);
+  --color-outline-variant: var(--md-outline-variant);
+  --color-error: var(--md-error);
+  --color-on-error: var(--md-on-error);
+  --color-error-container: var(--md-error-container);
+  --color-on-error-container: var(--md-on-error-container);
+  --color-warning: var(--md-warning);
+  --color-warning-container: var(--md-warning-container);
+  --color-on-warning-container: var(--md-on-warning-container);
+  --color-success: var(--md-success);
+  --color-success-container: var(--md-success-container);
+  --color-on-success-container: var(--md-on-success-container);
+  --color-scrim: var(--md-scrim);
+  --shadow-1: var(--md-shadow-1);
+  --shadow-2: var(--md-shadow-2);
+  --shadow-3: var(--md-shadow-3);
+  --radius-xs: var(--md-shape-xs);
+  --radius-sm: var(--md-shape-sm);
+  --radius-md: var(--md-shape-md);
+  --radius-lg: var(--md-shape-lg);
+  --radius-xl: var(--md-shape-xl);
+  --font-sans: var(--sans);
+  --font-heading: var(--heading);
+  --font-mono: var(--mono);
+}
+
+@layer base {
+  :root {
+    font: 16px/1.5 var(--sans);
+    letter-spacing: 0.15px;
+    color: var(--text);
+    background: var(--bg);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    font-family: var(--heading);
+    font-weight: 500;
+    color: var(--text-h);
+    margin: 0;
+  }
+  button {
+    cursor: pointer;
+  }
+  .material-symbols-rounded {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    font-size: 24px;
+    line-height: 1;
+    /* ligatures are disabled when letter-spacing is inherited */
+    letter-spacing: normal;
+    font-feature-settings: "liga";
+    white-space: nowrap;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .material-symbols-rounded.filled {
+    font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+  }
+}
+
+/* ---------- M3 type scale ---------- */
+@utility headline-sm {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 400;
+  color: var(--text-h);
+}
+@utility title-lg {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 400;
+  color: var(--text-h);
+}
+@utility title-md {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--text-h);
+}
+@utility title-sm {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: var(--text-h);
+}
+@utility body-lg {
+  font-size: 16px;
+  line-height: 24px;
+}
+@utility body-md {
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+}
+@utility body-sm {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+}
+@utility label-lg {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+@utility label-md {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+@utility label-sm {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* ---------- M3 components ---------- */
+@layer components {
+  /* Cards */
+  .md-card {
+    background: var(--md-surface);
+    border: 1px solid var(--md-outline-variant);
+    border-radius: var(--md-shape-md);
+  }
+  .md-card-filled {
+    background: var(--md-surface-container-low);
+    border-radius: var(--md-shape-md);
+  }
+  .md-card-elevated {
+    background: var(--md-surface-container-lowest);
+    border-radius: var(--md-shape-md);
+    box-shadow: var(--md-shadow-1);
+  }
+
+  /* Buttons (40px, pill) */
+  .md-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 24px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .md-btn:has(.material-symbols-rounded:first-child) {
+    padding-left: 16px;
+  }
+  .md-btn .material-symbols-rounded {
+    font-size: 18px;
+  }
+  /* State layer */
+  .md-btn::before,
+  .md-icon-btn::before,
+  .md-chip-action::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .md-btn:hover::before,
+  .md-icon-btn:hover::before,
+  .md-chip-action:hover::before {
+    opacity: 0.08;
+  }
+  .md-btn:active::before,
+  .md-icon-btn:active::before,
+  .md-chip-action:active::before {
+    opacity: 0.12;
+  }
+  .md-btn:focus-visible,
+  .md-icon-btn:focus-visible {
+    outline: 2px solid var(--md-primary);
+    outline-offset: 2px;
+  }
+  .md-btn:disabled {
+    opacity: 0.38;
+    cursor: default;
+    box-shadow: none;
+  }
+  .md-btn-filled {
+    background: var(--md-primary);
+    color: var(--md-on-primary);
+  }
+  .md-btn-filled:hover {
+    box-shadow: var(--md-shadow-1);
+  }
+  .md-btn-tonal {
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+  }
+  .md-btn-outlined {
+    border: 1px solid var(--md-outline);
+    color: var(--md-primary);
+  }
+  .md-btn-text {
+    padding: 0 12px;
+    color: var(--md-primary);
+  }
+
+  .md-icon-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    color: var(--md-on-surface-variant);
+    overflow: hidden;
+  }
+  .md-icon-btn-filled {
+    background: var(--md-error);
+    color: var(--md-on-error);
+  }
+
+  /* Chips (32px) */
+  .md-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--md-shape-sm);
+    border: 1px solid var(--md-outline);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    color: var(--md-on-surface);
+    white-space: nowrap;
+  }
+  .md-chip .material-symbols-rounded {
+    font-size: 18px;
+  }
+  .md-chip-action {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  /* Pokémon type chip: brand colour fill, label-medium */
+  .type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: var(--md-shape-sm);
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    white-space: nowrap;
+  }
+  .type-chip-sm {
+    height: 20px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  /* Outlined text field / select (56px) */
+  .md-field {
+    width: 100%;
+    height: 56px;
+    padding: 0 16px;
+    border-radius: var(--md-shape-xs);
+    border: 1px solid var(--md-outline);
+    background: transparent;
+    color: var(--md-on-surface);
+    font-size: 16px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .md-field::placeholder {
+    color: var(--md-on-surface-variant);
+  }
+  .md-field:hover {
+    border-color: var(--md-on-surface);
+  }
+  .md-field:focus {
+    outline: none;
+    border-color: var(--md-primary);
+    box-shadow: inset 0 0 0 1px var(--md-primary);
+  }
+  .md-field-label {
+    display: block;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.4px;
+    color: var(--md-on-surface-variant);
+    margin-bottom: 4px;
+  }
+  .md-field-sm {
+    height: 40px;
+    padding: 0 12px;
+    font-size: 14px;
+    border-radius: var(--md-shape-sm);
+  }
+
+  /* Linear progress */
+  .md-progress {
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--md-surface-container-highest);
+    overflow: hidden;
+  }
+  .md-progress > div {
+    height: 100%;
+    border-radius: 9999px;
+    background: var(--md-primary);
+    transition: width 0.6s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* List item */
+  .md-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 16px;
+    border-radius: var(--md-shape-sm);
+  }
+  .md-list-item .material-symbols-rounded {
+    margin-top: 2px;
+  }
+
+  .md-top-bar {
+    background: var(--md-surface);
+    min-height: 56px;
+  }
+  .md-drawer {
+    background: var(--md-surface-container-low);
+  }
+  @media (max-width: 1023.98px) {
+    .md-drawer {
+      border-start-end-radius: var(--md-shape-lg);
+      border-end-end-radius: var(--md-shape-lg);
+      box-shadow: var(--md-shadow-2);
+    }
+  }
+  .md-dialog {
+    background: var(--md-surface-container-high);
+    border-radius: var(--md-shape-xl);
+    box-shadow: var(--md-shadow-3);
+  }
+
+  /* Team slot: square card; sprite flexes to fill whatever space the text leaves */
+  .team-slot {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    aspect-ratio: 1 / 1;
+    padding: 12px;
+    border-radius: var(--md-shape-md);
+    text-align: center;
+  }
+  .team-slot-empty {
+    background: var(--md-surface-container-low);
+    border: 2px dashed var(--md-outline-variant);
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+  .team-slot-empty:hover {
+    border-color: var(--md-primary);
+    background: var(--md-primary-container);
+  }
+  .team-slot-filled {
+    background: var(--md-surface-container-lowest);
+    box-shadow: var(--md-shadow-1);
+    justify-content: flex-end;
+  }
+  .slot-sprite-box {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0 4px;
+  }
+  /* Both dimensions fixed + contain: wide sprites (Lugia) scale to the box like tall ones do */
+  .slot-sprite-box img {
+    width: 92%;
+    height: 100%;
+    max-height: 240px;
+    object-fit: contain;
+    object-position: center bottom;
+  }
+  @media (min-width: 1024px) {
+    .team-slot {
+      padding: 16px;
+    }
+  }
+  @media (max-width: 639.98px) {
+    .team-slot {
+      padding: 8px;
+      gap: 4px;
+    }
+    .team-slot .title-sm {
+      font-size: 12px;
+      line-height: 16px;
+    }
+    .lineup {
+      min-height: 120px;
+      gap: 4px;
+    }
+    .lineup figcaption {
+      font-size: 10px;
+    }
+  }
+
+  /* Team lineup: sprites standing on a shared floor; grows to fill the column at xl */
+  .lineup-card {
+    display: flex;
+    flex-direction: column;
+  }
+  .lineup {
+    flex: 1 1 auto;
+    min-height: 170px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 0 12px;
+    background: radial-gradient(
+      ellipse 70% 28px at 50% calc(100% - 12px),
+      var(--md-surface-container-highest),
+      transparent 70%
+    );
+  }
+  /* One figure per slot so a Pokémon stands under its grid position */
+  .lineup figure {
+    margin: 0;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .lineup img {
+    width: 100%;
+    object-fit: contain;
+    object-position: center bottom;
+    filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35));
+  }
+  .lineup figcaption {
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: var(--md-on-surface);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sprite-3d {
+    object-fit: contain;
+  }
+  .sr-only-focusable:focus {
+    position: static;
+  }
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--md-surface-container-low);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--md-outline);
+  border-radius: 4px;
+}
