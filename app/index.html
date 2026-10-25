@@ -30,16 +30,16 @@
       </div>
     </div>
 
-    <!-- App shell: sidebar | team | analysis -->
-    <div class="flex h-dvh overflow-hidden">
+    <!-- App shell: nav (drawer on mobile) over team | analysis -->
+    <div class="flex flex-col h-dvh overflow-hidden">
       <div id="mobileOverlay" class="fixed inset-0 bg-scrim z-30 lg:hidden hidden"></div>
 
-      <!-- Sidebar -->
+      <!-- Drawer (<lg only). #controls is moved between #drawerDock and #controlsDock by script.js -->
       <aside
         id="sidebar"
-        class="md-drawer w-64 shrink-0 flex flex-col h-full fixed lg:relative z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-300"
+        class="md-drawer fixed inset-y-0 left-0 w-64 z-40 flex flex-col transform -translate-x-full transition-transform duration-300 lg:hidden"
       >
-        <div class="px-5 pt-5 pb-4 flex items-center gap-3">
+        <div class="px-4 pt-4 pb-3 flex items-center gap-3">
           <div class="w-10 h-10 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shrink-0">
             <span class="material-symbols-rounded filled">swords</span>
           </div>
@@ -47,33 +47,55 @@
             <h1 class="title-md truncate">Team Analyzer</h1>
             <p class="body-sm">Build &amp; analyze</p>
           </div>
-        </div>
-
-        <div class="flex-1 px-4 overflow-y-auto flex flex-col gap-4 pt-2">
-          <div>
-            <label for="teamSize" class="md-field-label">Team size</label>
-            <select id="teamSize" class="md-field">
-              <option value="3">3 Pokémon</option>
-              <option value="4">4 Pokémon</option>
-              <option value="5">5 Pokémon</option>
-              <option value="6" selected>6 Pokémon</option>
-            </select>
-          </div>
-
-          <button id="resetBtn" class="md-btn md-btn-outlined w-full">
-            <span class="material-symbols-rounded">restart_alt</span>
-            <span>Reset team</span>
-          </button>
-
-          <div class="flex items-center justify-between pl-1">
-            <span class="label-lg text-on-surface">Theme</span>
+          <span id="drawerThemeDock" class="ml-auto flex">
             <button id="themeToggle" class="md-icon-btn" aria-label="Toggle theme">
               <span id="themeIcon" class="material-symbols-rounded">dark_mode</span>
+            </button>
+          </span>
+          <button id="closeSidebar" class="md-icon-btn" aria-label="Close menu">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div id="drawerDock" class="flex-1 min-h-0 px-3 pt-1 pb-3 overflow-y-auto overscroll-contain">
+          <div id="controls" class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 lg:flex-1">
+            <div class="lg:flex lg:items-center lg:gap-2">
+              <label for="teamSize" class="md-field-label lg:mb-0 lg:whitespace-nowrap">Team size</label>
+              <select id="teamSize" class="md-field md-field-sm lg:w-36">
+                <option value="3">3 Pokémon</option>
+                <option value="4">4 Pokémon</option>
+                <option value="5">5 Pokémon</option>
+                <option value="6" selected>6 Pokémon</option>
+              </select>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <span class="md-chip !h-8 !px-2.5 body-sm" title="Members">
+                <span class="material-symbols-rounded text-primary" style="font-size:18px">groups</span>
+                <span><span id="teamCount">0</span>/<span id="teamSizeLabel">6</span></span>
+              </span>
+              <span class="md-chip !h-8 !px-2.5 body-sm" title="Distinct types">
+                <span class="material-symbols-rounded text-primary" style="font-size:18px">category</span>
+                <span><span id="typeCount">0</span> types</span>
+              </span>
+            </div>
+            <p class="body-sm lg:hidden">Tap a slot to add a Pokémon</p>
+
+            <!-- Recommendations launcher (list lives in #recModal) -->
+            <button id="recommendationsCard" class="hidden md-chip md-chip-action !h-8 !px-2.5 flex items-center gap-1.5 w-full lg:w-auto text-left" aria-haspopup="dialog" aria-controls="recModal">
+              <span class="material-symbols-rounded text-primary" style="font-size:18px">lightbulb</span>
+              <span class="flex-1 lg:flex-none">Recommendations</span>
+              <span id="recommendationsCount" class="label-sm bg-primary-container text-on-primary-container px-1.5 rounded-full">0</span>
+            </button>
+
+            <button id="resetBtn" class="md-btn md-btn-outlined w-full lg:w-auto lg:ml-auto !h-9">
+              <span class="material-symbols-rounded">restart_alt</span>
+              <span>Reset team</span>
             </button>
           </div>
         </div>
 
-        <div class="px-5 py-4 body-sm">
+        <div class="px-4 py-3 body-sm lg:hidden">
           <p>Data: PokéAPI · Sprites: Pokémon Showdown</p>
           <p>
             Design &amp; development by
@@ -92,37 +114,42 @@
           <h2 class="title-md px-1">Team Analyzer</h2>
         </header>
 
-      <main class="flex-1 overflow-auto p-3 lg:p-4">
+      <main class="flex-1 overflow-auto p-3 lg:p-0">
         <div
           id="layout"
-          class="grid grid-cols-1 xl:grid-cols-[minmax(0,640px)_minmax(0,1fr)] gap-4 items-start"
+          class="grid grid-cols-1 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] gap-4 lg:gap-0 items-start lg:items-stretch lg:min-h-full"
         >
-          <!-- Left column: team -->
-          <div class="flex flex-col gap-4 w-full max-w-[640px] mx-auto xl:max-w-none xl:mx-0 xl:sticky xl:top-0 xl:h-[calc(100dvh-2rem)]">
-            <section>
-              <div class="flex items-center gap-2 mb-2">
-                <span class="md-chip !h-7 !px-2.5 body-sm">
-                  <span class="material-symbols-rounded" style="font-size:16px">groups</span>
-                  <span><span id="teamCount">0</span>/<span id="teamSizeLabel">6</span></span>
-                </span>
-                <span class="md-chip !h-7 !px-2.5 body-sm">
-                  <span class="material-symbols-rounded" style="font-size:16px">category</span>
-                  <span><span id="typeCount">0</span> types</span>
-                </span>
-                <span class="body-sm ml-auto truncate">Tap a slot to add</span>
+          <!-- Left column: nav + team + controls; fills the viewport height on lg+ -->
+          <div class="flex flex-col gap-3 lg:gap-0 w-full max-w-[720px] mx-auto lg:max-w-none lg:mx-0 lg:self-start lg:sticky lg:top-0 lg:h-dvh">
+            <!-- Nav (lg+): flat brand bar; theme toggle is reparented into #navThemeDock -->
+            <div class="hidden lg:flex items-center gap-3 px-4 h-14 shrink-0 border-b border-outline-variant">
+              <div class="w-8 h-8 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center">
+                <span class="material-symbols-rounded filled" style="font-size:18px">swords</span>
               </div>
-              <div id="teamGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4"></div>
+              <div class="leading-tight">
+                <div class="title-sm">Team Analyzer</div>
+                <div class="body-sm">PokéAPI · Showdown sprites</div>
+              </div>
+              <span id="navThemeDock" class="ml-auto flex"></span>
+            </div>
+
+            <section class="lg:flex-1 lg:min-h-0 lg:p-4">
+              <div id="teamGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 lg:h-full lg:auto-rows-fr"></div>
             </section>
 
+            <!-- Controls (lg+): flat row under the slots; #controls is reparented here -->
+            <div id="controlsDock" class="hidden lg:flex items-center px-4 pb-4 shrink-0"></div>
+          </div>
+
+          <!-- Right column: team display + analysis -->
+          <div class="md-card min-w-0 flex flex-col lg:rounded-none lg:border-0 lg:border-l lg:border-outline-variant">
             <!-- Lineup -->
-            <div id="lineupCard" class="hidden lineup-card md-card-filled px-4 pt-3 pb-3 xl:flex-1 xl:min-h-0">
+            <div id="lineupCard" class="lineup-card px-4 pt-3 pb-3 lg:py-4 lg:h-[50dvh] lg:shrink-0 border-b border-outline-variant">
               <div id="lineup" class="lineup"></div>
               <p id="coverageSummary" class="body-sm text-center mt-2 shrink-0"></p>
             </div>
-          </div>
 
-          <!-- Right column: analysis -->
-          <div class="flex flex-col gap-4 min-w-0">
+            <div class="flex flex-col gap-4 p-3 sm:p-4">
             <div class="flex items-baseline justify-between gap-2 px-1">
               <h2 class="title-lg">Analysis</h2>
               <span id="analysisMeta" class="label-sm"></span>
@@ -137,7 +164,7 @@
 
             <section id="resultsSection" class="hidden flex flex-col gap-4 min-w-0">
             <!-- Score + threat summary -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4">
               <div id="scoreCard" class="md-card-filled p-4 flex flex-col gap-4">
                 <div class="flex items-center gap-4">
                   <div class="relative w-20 h-20 shrink-0">
@@ -207,15 +234,6 @@
                 </div>
               </div>
             </div>
-            <!-- Recommendations -->
-            <div class="md-card p-4">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="material-symbols-rounded text-primary">lightbulb</span>
-                <h3 class="title-md">Recommendations</h3>
-              </div>
-              <ul id="recommendations" class="divide-y divide-outline-variant"></ul>
-            </div>
-
             <!-- Threats & switch-ins -->
             <div class="md-card p-4">
               <div class="flex items-center gap-2 mb-1">
@@ -231,9 +249,10 @@
                 <span class="material-symbols-rounded text-primary">groups</span>
                 <h3 class="title-md">Member breakdown</h3>
               </div>
-              <div id="memberGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+              <div id="memberGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-3"></div>
             </div>
           </section>
+            </div>
           </div>
         </div>
       </main>
@@ -286,6 +305,63 @@
       </div>
     </div>
 
-    <script type="module" src="/src/main.js"></script>
+    <!-- Recommendations dialog -->
+    <div
+      id="recModal"
+      class="fixed inset-0 bg-scrim flex items-center justify-center p-4 z-50 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="recModalTitle"
+    >
+      <div class="md-dialog w-full max-w-lg max-h-[85dvh] flex flex-col overflow-hidden">
+        <div class="px-6 pt-5 pb-3 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="material-symbols-rounded text-primary">lightbulb</span>
+            <h3 id="recModalTitle" class="title-lg">Recommendations</h3>
+          </div>
+          <button id="closeRecModal" class="md-icon-btn shrink-0" aria-label="Close">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <ul id="recommendations" class="divide-y divide-outline-variant overflow-y-auto overscroll-contain min-h-0 px-6 pb-5"></ul>
+      </div>
+    </div>
+
+    <!-- Move picker dialog -->
+    <div
+      id="moveModal"
+      class="fixed inset-0 bg-scrim flex items-center justify-center p-4 z-50 hidden"
+    >
+      <div class="md-dialog w-full max-w-md max-h-[85dvh] flex flex-col overflow-hidden">
+        <div class="px-6 pt-5 pb-3 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <h3 id="moveModalTitle" class="title-lg">Move 1</h3>
+            <p id="moveModalSub" class="body-sm truncate"></p>
+          </div>
+          <button id="closeMoveModal" class="md-icon-btn shrink-0" aria-label="Close">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="px-6 pb-3 relative">
+          <span class="material-symbols-rounded absolute left-9 top-1/2 -translate-y-1/2 -mt-1.5 pointer-events-none" style="font-size:20px">search</span>
+          <input
+            type="text"
+            id="moveSearch"
+            class="md-field md-field-sm !pl-10"
+            placeholder="Search moves"
+            autocomplete="off"
+          />
+        </div>
+        <ul id="moveList" class="overflow-y-auto px-3 pb-2 min-h-0"></ul>
+        <div class="px-4 py-3 flex justify-end border-t border-outline-variant">
+          <button id="clearMove" class="md-btn md-btn-text">
+            <span class="material-symbols-rounded">backspace</span>
+            <span>Clear slot</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/script.js"></script>
   </body>
 </html>
