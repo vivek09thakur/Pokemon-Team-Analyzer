@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { MOVE_SLOTS } from "@/lib/constants";
 import { padId, slotSpriteScale, typeColor } from "@/lib/calculation";
 import { fetchMoveType, knownMoveType } from "@/lib/pokeapi";
@@ -15,19 +15,82 @@ interface Props {
   onRemove: (index: number) => void;
   onAbilityChange: (index: number, ability: string) => void;
   onOpenMove: (index: number, moveIndex: number) => void;
+  onMove: (from: number, to: number) => void;
 }
 
-export default function TeamSlot({
+const DND_TYPE = "application/x-team-slot";
+
+// Native HTML5 DnD: no library, no per-frame JS; the browser renders the drag image and we only
+// toggle a class on the hovered slot. Drop swaps the two slots (or moves into an empty one).
+function useSlotDnd(index: number, onMove: (from: number, to: number) => void, draggable: boolean) {
+  const [over, setOver] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const depth = useRef(0); // dragenter/leave fire for every child; count them
+
+  return {
+    over,
+    dragging,
+    props: {
+      draggable,
+      onDragStart: (e: React.DragEvent) => {
+        if (!draggable) return;
+        // Dragging from a control would swallow its click/select; only the card body drags
+        if ((e.target as HTMLElement).closest("select, button")) {
+          e.preventDefault();
+          return;
+        }
+        e.dataTransfer.setData(DND_TYPE, String(index));
+        e.dataTransfer.effectAllowed = "move";
+        setDragging(true);
+      },
+      onDragEnd: () => setDragging(false),
+      onDragEnter: (e: React.DragEvent) => {
+        if (!e.dataTransfer.types.includes(DND_TYPE)) return;
+        if (depth.current++ === 0) setOver(true);
+      },
+      onDragLeave: () => {
+        if (--depth.current <= 0) {
+          depth.current = 0;
+          setOver(false);
+        }
+      },
+      onDragOver: (e: React.DragEvent) => {
+        if (!e.dataTransfer.types.includes(DND_TYPE)) return;
+        e.preventDefault(); // required to allow drop
+        e.dataTransfer.dropEffect = "move";
+      },
+      onDrop: (e: React.DragEvent) => {
+        depth.current = 0;
+        setOver(false);
+        const from = parseInt(e.dataTransfer.getData(DND_TYPE));
+        if (Number.isNaN(from)) return;
+        e.preventDefault();
+        if (from !== index) onMove(from, index);
+      },
+    },
+  };
+}
+
+// Memoised: a team change only re-renders the slots whose member object actually changed
+const TeamSlot = memo(function TeamSlot({
   index,
   member,
   onOpenAdd,
   onRemove,
   onAbilityChange,
   onOpenMove,
+  onMove,
 }: Props) {
+  const dnd = useSlotDnd(index, onMove, !!member);
+  const dndClass = `${dnd.over ? " is-drop-target" : ""}${dnd.dragging ? " is-dragging" : ""}`;
+
   if (!member) {
     return (
-      <div className="team-slot team-slot-empty" onClick={() => onOpenAdd(index)}>
+      <div
+        className={`team-slot team-slot-empty${dndClass}`}
+        onClick={() => onOpenAdd(index)}
+        {...dnd.props}
+      >
         <Icon name="add_circle" size={24} className="text-primary" />
         <div className="title-sm">Add Pokémon</div>
         <div className="label-sm">Slot {index + 1}</div>
@@ -37,7 +100,7 @@ export default function TeamSlot({
 
   const flying = member.types.includes("flying");
   return (
-    <div className="team-slot team-slot-filled">
+    <div className={`team-slot team-slot-filled${dndClass}`} {...dnd.props} title="Drag to reorder">
       <div className="slot-top">
         <div className="slot-head">
           <select
@@ -90,7 +153,9 @@ export default function TeamSlot({
       </div>
     </div>
   );
-}
+});
+
+export default TeamSlot;
 
 function SlotSprite({ member, flying }: { member: Member; flying: boolean }) {
   const boxRef = useRef<HTMLDivElement>(null);

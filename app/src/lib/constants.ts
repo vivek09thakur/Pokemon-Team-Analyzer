@@ -13,6 +13,14 @@ export const SWITCH_SPRITE_SETS = [
   `${GEN8}/brilliant-diamond-shining-pearl`,
   `${GEN9}/legends-za`,
 ];
+// Menu/box icons (png); same per-game coverage, so SV first then the rest
+export const SWITCH_ICON_SETS = [
+  `${GEN9}/scarlet-violet/icons`,
+  `${GEN8}/sword-shield/icons`,
+  `${GEN9}/legends-za/icons`,
+  `${GEN8}/legends-arceus/icons`,
+  `${GEN8}/brilliant-diamond-shining-pearl/icons`,
+];
 
 export const TOTAL_POKEMON = 1025; // Gen 1-9
 export const LIST_BATCH_SIZE = 400;

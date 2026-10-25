@@ -1,8 +1,14 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { spriteSources } from "@/lib/calculation";
-import { attachSpriteFit, handleSpriteError, type FitOptions } from "@/lib/sprites";
+import { spriteSources, thumbSources } from "@/lib/calculation";
+import {
+  attachSpriteFit,
+  handleSpriteError,
+  orderSources,
+  rememberSprite,
+  type FitOptions,
+} from "@/lib/sprites";
 import type { Pokemon } from "@/lib/types";
 
 interface Props {
@@ -11,16 +17,22 @@ interface Props {
   style?: React.CSSProperties;
   // When given, the visible pixels are measured and scaled to fit (see lib/sprites)
   fit?: FitOptions;
+  // Small preview: HOME render first, no game-sprite fallback walk
+  thumb?: boolean;
 }
 
 // <img> with the sprite fallback chain and optional pixel-accurate fitting
 const Sprite = forwardRef<HTMLImageElement, Props>(function Sprite(
-  { pokemon, className = "", style, fit },
+  { pokemon, className = "", style, fit, thumb = false },
   ref
 ) {
   const imgRef = useRef<HTMLImageElement>(null);
   useImperativeHandle(ref, () => imgRef.current as HTMLImageElement);
-  const [primary, ...fallbacks] = spriteSources(pokemon);
+  const memoKey = `${thumb ? "thumb" : "full"}:${pokemon.id}`;
+  const [primary, ...fallbacks] = orderSources(
+    memoKey,
+    thumb ? thumbSources(pokemon) : spriteSources(pokemon)
+  );
 
   // Latest options without re-attaching on every render
   const fitRef = useRef(fit);
@@ -52,6 +64,7 @@ const Sprite = forwardRef<HTMLImageElement, Props>(function Sprite(
       data-id={pokemon.id}
       data-fallbacks={fallbacks.join("|")}
       onError={handleSpriteError}
+      onLoad={(e) => rememberSprite(memoKey, e.currentTarget.currentSrc)}
       draggable={false}
     />
   );

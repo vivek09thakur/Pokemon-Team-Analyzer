@@ -6,12 +6,13 @@ import {
   STORAGE_KEYS,
   TOTAL_POKEMON,
 } from "./constants";
-import { toPokemon } from "./calculation";
-import type { ListEntry, Pokemon } from "./types";
+import { summaryOf, toPokemon, toSummary } from "./calculation";
+import type { ListEntry, Pokemon, PokemonSummary } from "./types";
 
 let pokemonList: ListEntry[] = [];
 let listPromise: Promise<ListEntry[]> | null = null;
 const pokemonCache = new Map<string, Promise<Pokemon | null>>();
+const summaryCache = new Map<string, Promise<PokemonSummary | null>>();
 
 function readJSON<T>(key: string, fallback: T): T {
   try {
@@ -116,6 +117,30 @@ export function fetchPokemon(name: string): Promise<Pokemon | null> {
       return null;
     });
   pokemonCache.set(key, promise);
+  return promise;
+}
+
+// Small per-result document for the search grid; the full /pokemon record is fetched on add.
+// A few species' form slugs differ from their pokemon slug (polteageist → polteageist-phony),
+// so a 404 here falls back to the full record.
+export function fetchPokemonSummary(name: string): Promise<PokemonSummary | null> {
+  const key = name.toLowerCase();
+  const hit = summaryCache.get(key);
+  if (hit) return hit;
+  const slug = key.replace(/[^a-z0-9-]/g, "");
+  const promise = fetch(`${API_BASE}/pokemon-form/${slug}`)
+    .then(async (res) => {
+      if (res.ok) return toSummary(await res.json());
+      if (res.status !== 404) throw new Error(`HTTP error! status: ${res.status}`);
+      const full = await fetchPokemon(name);
+      return full ? summaryOf(full, slug) : null;
+    })
+    .catch((error) => {
+      console.error(`Error fetching ${name}:`, error);
+      summaryCache.delete(key);
+      return null;
+    });
+  summaryCache.set(key, promise);
   return promise;
 }
 

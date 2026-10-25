@@ -75,9 +75,15 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
 
   const wanted = useMemo(() => {
     const list: Figure[] = [];
+    // Keyed by species (plus an occurrence index for duplicates) so a drag-reorder just moves the
+    // figure instead of fading it out and back in
+    const seen = new Map<number, number>();
     for (let i = 0; i < teamSize; i++) {
       const m = team.get(i);
-      if (m) list.push({ key: `${i}:${m.id}`, slot: i, member: m });
+      if (!m) continue;
+      const n = seen.get(m.id) ?? 0;
+      seen.set(m.id, n + 1);
+      list.push({ key: `${m.id}#${n}`, slot: i, member: m });
     }
     return list;
   }, [team, teamSize]);

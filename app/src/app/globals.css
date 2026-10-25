@@ -509,6 +509,23 @@
     justify-content: flex-end;
     gap: 4px;
     padding: 10px;
+    cursor: grab;
+  }
+  .team-slot-filled:active {
+    cursor: grabbing;
+  }
+  /* Drag-and-drop feedback: source fades, hovered target gets a primary ring */
+  .team-slot.is-dragging {
+    opacity: 0.4;
+  }
+  .team-slot.is-drop-target {
+    box-shadow: 0 0 0 2px var(--md-primary), var(--md-shadow-2);
+    border-color: var(--md-primary);
+  }
+  /* Controls inside a slot must not start a drag (they'd lose their own click/select) */
+  .team-slot-filled select,
+  .team-slot-filled button {
+    cursor: pointer;
   }
   .slot-head {
     display: flex;

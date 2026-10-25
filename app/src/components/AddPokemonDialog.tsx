@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SEARCH_LIMIT } from "@/lib/constants";
 import { padId } from "@/lib/calculation";
-import { fetchPokemon, hasPokemonList, loadPokemonList } from "@/lib/pokeapi";
-import type { Pokemon } from "@/lib/types";
+import { fetchPokemon, fetchPokemonSummary, hasPokemonList, loadPokemonList } from "@/lib/pokeapi";
+import type { Pokemon, PokemonSummary } from "@/lib/types";
 import Dialog from "./Dialog";
 import Sprite from "./Sprite";
 import { Icon, TypeChip } from "./ui";
@@ -19,7 +19,7 @@ type Progress = null | { done: number; total: number; label?: string };
 type Phase = "idle" | "searching" | "loading" | "results" | "empty" | "error";
 interface SearchState {
   phase: Phase;
-  results: Pokemon[];
+  results: PokemonSummary[];
   progress: Progress;
 }
 
@@ -31,7 +31,8 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
     results: [],
     progress: null,
   });
-  const [selected, setSelected] = useState<Pokemon | null>(null);
+  const [selected, setSelected] = useState<PokemonSummary | null>(null);
+  const [adding, setAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const runId = useRef(0);
@@ -74,12 +75,12 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
         const found = (
           await Promise.all(
             filtered.map(async (entry) => {
-              const data = await fetchPokemon(entry.name);
+              const data = await fetchPokemonSummary(entry.name);
               patch({ progress: { done: ++done, total: filtered.length } });
               return data;
             })
           )
-        ).filter((p): p is Pokemon => !!p);
+        ).filter((p): p is PokemonSummary => !!p);
         patch({ phase: found.length ? "results" : "empty", progress: null, results: found });
       } catch (error) {
         if (!live()) return;
@@ -97,13 +98,22 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
   const results = active ? search.results : [];
   const progress = active ? search.progress : null;
 
-  const select = useCallback((p: Pokemon) => {
+  const select = useCallback((p: PokemonSummary) => {
     setSelected(p);
+    fetchPokemon(p.slug); // warm the full record so Add is instant
     window.setTimeout(
       () => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
       0
     );
   }, []);
+
+  const add = useCallback(async () => {
+    if (!selected || adding) return;
+    setAdding(true);
+    const full = await fetchPokemon(selected.slug);
+    setAdding(false);
+    if (full) onAdd(full);
+  }, [selected, adding, onAdd]);
 
   const handleClose = useCallback(() => {
     runId.current++;
@@ -176,7 +186,7 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
               className="search-result md-card-filled md-chip-action p-3 flex flex-col items-center gap-1 text-center w-full"
               onClick={() => select(p)}
             >
-              <Sprite pokemon={p} className="h-16 w-16" />
+              <Sprite pokemon={p} className="h-16 w-16" thumb />
               <div className="title-sm truncate max-w-full">{p.name}</div>
               <div className="label-sm">#{padId(p.id)}</div>
               <div className="flex flex-wrap justify-center gap-1">
@@ -191,7 +201,7 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
       {selected && (
         <div ref={previewRef} className="mt-5">
           <div className="md-card-filled p-4 flex flex-wrap items-center gap-4">
-            <Sprite pokemon={selected} className="h-24 w-24" />
+            <Sprite pokemon={selected} className="h-24 w-24" thumb />
             <div className="flex-1 min-w-[160px]">
               <h5 className="title-lg">
                 {selected.name} #{padId(selected.id)}
@@ -202,9 +212,9 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
                 ))}
               </div>
             </div>
-            <button className="md-btn md-btn-filled" onClick={() => onAdd(selected)}>
+            <button className="md-btn md-btn-filled" onClick={add} disabled={adding}>
               <Icon name="add" />
-              <span>Add to team</span>
+              <span>{adding ? "Adding…" : "Add to team"}</span>
             </button>
           </div>
         </div>

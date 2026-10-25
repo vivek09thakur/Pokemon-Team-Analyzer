@@ -287,7 +287,7 @@ function MemberCard({ m }: { m: MemberAnalysis }) {
   return (
     <div className="md-card-filled p-3 flex gap-3">
       <div className="w-16 h-16 shrink-0 flex items-center justify-center">
-        <Sprite pokemon={m.pokemon} className="max-w-full max-h-full" />
+        <Sprite pokemon={m.pokemon} className="max-w-full max-h-full" thumb />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">

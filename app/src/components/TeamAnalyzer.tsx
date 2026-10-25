@@ -104,6 +104,20 @@ export default function TeamAnalyzer() {
     [updateTeam]
   );
 
+  // Drag-and-drop: swap two slots (moving into an empty slot just relocates)
+  const moveMember = useCallback(
+    (from: number, to: number) =>
+      updateTeam((t) => {
+        const a = t.get(from);
+        const b = t.get(to);
+        if (!a) return;
+        t.set(to, a);
+        if (b) t.set(from, b);
+        else t.delete(from);
+      }),
+    [updateTeam]
+  );
+
   const pickMove = useCallback(
     (slug: string) => {
       if (!moveTarget) return;
@@ -129,6 +143,7 @@ export default function TeamAnalyzer() {
   const closeAdd = useCallback(() => setAddSlot(null), []);
   const closeMove = useCallback(() => setMoveTarget(null), []);
   const closeRecs = useCallback(() => setRecsOpen(false), []);
+  const openMove = useCallback((slot: number, moveIndex: number) => setMoveTarget({ slot, moveIndex }), []);
 
   const controlsProps = {
     teamSize,
@@ -176,7 +191,8 @@ export default function TeamAnalyzer() {
                       onOpenAdd={setAddSlot}
                       onRemove={removePokemon}
                       onAbilityChange={setAbility}
-                      onOpenMove={(slot, moveIndex) => setMoveTarget({ slot, moveIndex })}
+                      onOpenMove={openMove}
+                      onMove={moveMember}
                     />
                   ))}
                 </div>

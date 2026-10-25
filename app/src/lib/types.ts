@@ -22,6 +22,15 @@ export interface Pokemon {
   sprite: string;
 }
 
+// What the search grid needs (from the ~15 KB /pokemon-form doc, not the ~115 KB /pokemon one)
+export interface PokemonSummary {
+  slug: string;
+  id: number;
+  name: string;
+  types: TypeName[];
+  showdownId: string;
+}
+
 // A species placed in a slot: per-slot picks live here, not on the cached Pokemon
 export interface Member extends Pokemon {
   ability: string;

@@ -5,11 +5,12 @@ import {
   SHOWDOWN_SPRITES,
   POKEAPI_SPRITES,
   SWITCH_SPRITE_SETS,
+  SWITCH_ICON_SETS,
   isTypeName,
   type Bucket,
   type TypeName,
 } from "./constants";
-import type { Pokemon } from "./types";
+import type { Pokemon, PokemonSummary } from "./types";
 
 export const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
@@ -67,6 +68,15 @@ export function spriteSources(pokemon: Pick<Pokemon, "id" | "showdownId">) {
   ];
 }
 
+// Small previews: Scarlet/Violet box icons (then other Switch games), HOME render as last resort
+export function thumbSources(pokemon: Pick<Pokemon, "id" | "showdownId">) {
+  return [
+    ...SWITCH_ICON_SETS.map((base) => `${base}/${pokemon.id}.png`),
+    `${POKEAPI_SPRITES}/home/${pokemon.id}.png`,
+    `${POKEAPI_SPRITES}/official-artwork/${pokemon.id}.png`,
+  ];
+}
+
 // Sprite height is linear in real height so members read true-to-scale; 1 m = 100px
 export function lineupHeight(pokemon: Pick<Pokemon, "height">) {
   const px = 100 * ((pokemon.height || 10) / 10);
@@ -114,3 +124,34 @@ export function toPokemon(data: RawPokemon): Pokemon | null {
   };
   return { ...base, sprite: spriteSources(base)[0] };
 }
+
+interface RawForm {
+  name: string;
+  form_name?: string;
+  pokemon: { url: string };
+  types: { type: { name: string } }[];
+}
+
+// Shape raw PokeAPI /pokemon-form JSON into a search summary
+export function toSummary(data: RawForm): PokemonSummary | null {
+  const types = data.types.map((t) => t.type.name).filter(isTypeName);
+  if (types.length === 0) return null;
+  const id = parseInt(data.pokemon.url.replace(/\/$/, "").split("/").pop() || "0");
+  const base = data.name.split("-")[0];
+  return {
+    slug: data.name,
+    id,
+    name: displayName(data.name),
+    types,
+    // Default forms are keyed by species on Showdown ("deoxys", not "deoxysnormal")
+    showdownId: (data.form_name ? data.name : base).replace(/[^a-z0-9]/g, ""),
+  };
+}
+
+export const summaryOf = (p: Pokemon, slug: string): PokemonSummary => ({
+  slug,
+  id: p.id,
+  name: p.name,
+  types: p.types,
+  showdownId: p.showdownId,
+});

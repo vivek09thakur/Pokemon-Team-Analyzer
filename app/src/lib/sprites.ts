@@ -126,3 +126,13 @@ export function handleSpriteError(e: React.SyntheticEvent<HTMLImageElement>) {
   img.dataset.fallbacks = rest.join("|");
   if (next) img.src = next;
 }
+
+// Which URL in the chain actually loaded for an id, so later <img>s for the same Pokémon
+// (lineup, member card) skip straight to it instead of re-walking the 404s
+const resolved = new Map<string, string>();
+export const rememberSprite = (key: string, src: string) => resolved.set(key, src);
+export function orderSources(key: string, sources: string[]) {
+  const hit = resolved.get(key);
+  if (!hit || !sources.includes(hit)) return sources;
+  return [hit, ...sources.filter((s) => s !== hit)];
+}
