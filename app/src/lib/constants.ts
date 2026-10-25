@@ -18,11 +18,12 @@ export const TOTAL_POKEMON = 1025; // Gen 1-9
 export const LIST_BATCH_SIZE = 400;
 export const SEARCH_LIMIT = 12;
 export const MOVE_SLOTS = 4;
+export const TEAM_SIZES = [3, 4, 5, 6] as const;
 
 export const STORAGE_KEYS = {
   pokemonList: "pokemonList",
   moveTypes: "moveTypes",
-};
+} as const;
 
 export const TYPE_DATA = {
   normal: { color: "#A8A878", name: "Normal" },
@@ -43,12 +44,16 @@ export const TYPE_DATA = {
   dark: { color: "#705848", name: "Dark" },
   steel: { color: "#B8B8D0", name: "Steel" },
   fairy: { color: "#EE99AC", name: "Fairy" },
-};
+} as const;
 
-export const TYPES = Object.keys(TYPE_DATA);
+export type TypeName = keyof typeof TYPE_DATA;
+
+export const TYPES = Object.keys(TYPE_DATA) as TypeName[];
+
+export const isTypeName = (t: string): t is TypeName => t in TYPE_DATA;
 
 // TYPE_CHART[attacking][defending] = multiplier (missing = 1)
-export const TYPE_CHART = {
+export const TYPE_CHART: Record<TypeName, Partial<Record<TypeName, number>>> = {
   normal: { rock: 0.5, ghost: 0, steel: 0.5 },
   fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
   water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
@@ -103,8 +108,10 @@ export const TYPE_CHART = {
   fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 },
 };
 
+export type Bucket = "immune" | "quadResist" | "resist" | "neutral" | "weak" | "quadWeak";
+
 // Score contribution of each defensive bucket when summed across a team
-export const BUCKET_WEIGHT = {
+export const BUCKET_WEIGHT: Record<Bucket, number> = {
   immune: -2,
   quadResist: -2,
   resist: -1,

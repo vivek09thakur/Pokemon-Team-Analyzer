@@ -1,10 +1,80 @@
 // Analysis engine: pure functions over team data. Cheap (18 types × ≤6 members), re-run on every change.
-import { TYPES, TYPE_CHART, BUCKET_WEIGHT } from "./constants.js";
-import { bucket, clamp, effectiveness, plural, typeName } from "./calculation.js";
+import { TYPES, TYPE_CHART, BUCKET_WEIGHT, type Bucket, type TypeName } from "./constants";
+import { bucket, clamp, effectiveness, plural, typeName } from "./calculation";
+import type { Member, Team } from "./types";
 
-export function analyzeMember(pokemon) {
-  const matchups = {};
-  const groups = {
+export interface MemberAnalysis {
+  pokemon: Member;
+  matchups: Record<TypeName, number>;
+  groups: Record<Bucket, TypeName[]>;
+  score: number;
+}
+
+export type Severity = "neutral" | "critical" | "major" | "resisted" | "balanced";
+
+export interface DefenseEntry {
+  type: TypeName;
+  weakBy: Member[];
+  quadWeakBy: Member[];
+  resistBy: Member[];
+  immuneBy: Member[];
+  net: number;
+  severity: Severity;
+}
+
+export interface DefenseAnalysis {
+  byType: Record<TypeName, DefenseEntry>;
+  critical: DefenseEntry[];
+  major: DefenseEntry[];
+  resisted: DefenseEntry[];
+  score: number;
+}
+
+export interface CoverageEntry {
+  type: TypeName;
+  best: number;
+  hitters: { pokemon: Member; type: TypeName }[];
+  status: "super" | "neutral" | "wall";
+}
+
+export interface CoverageAnalysis {
+  byType: Record<TypeName, CoverageEntry>;
+  superEffective: TypeName[];
+  gaps: TypeName[];
+  walls: TypeName[];
+  suggestions: { type: TypeName; covers: TypeName[] }[];
+  score: number;
+}
+
+export interface DiversityAnalysis {
+  counts: Partial<Record<TypeName, number>>;
+  unique: number;
+  duplicates: [TypeName, number][];
+  score: number;
+}
+
+export type Tone = "error" | "warning" | "success" | "neutral";
+
+export interface Recommendation {
+  icon: string;
+  tone: Tone;
+  title: string;
+  body: string;
+}
+
+export interface AnalysisResult {
+  team: Member[];
+  members: MemberAnalysis[];
+  defense: DefenseAnalysis;
+  coverage: CoverageAnalysis;
+  diversity: DiversityAnalysis;
+  overall: number;
+  recommendations: Recommendation[];
+}
+
+export function analyzeMember(pokemon: Member): MemberAnalysis {
+  const matchups = {} as Record<TypeName, number>;
+  const groups: Record<Bucket, TypeName[]> = {
     immune: [],
     quadResist: [],
     resist: [],
@@ -28,17 +98,18 @@ export function analyzeMember(pokemon) {
   return { pokemon, matchups, groups, score };
 }
 
-export function analyzeDefense(members) {
-  const byType = {};
+export function analyzeDefense(members: MemberAnalysis[]): DefenseAnalysis {
+  const byType = {} as Record<TypeName, DefenseEntry>;
 
   for (const t of TYPES) {
-    const entry = {
+    const entry: DefenseEntry = {
       type: t,
       weakBy: [],
       quadWeakBy: [],
       resistBy: [],
       immuneBy: [],
       net: 0,
+      severity: "neutral",
     };
     for (const m of members) {
       const b = bucket(m.matchups[t]);
@@ -81,11 +152,11 @@ export function analyzeDefense(members) {
 }
 
 // Coverage is estimated from STAB types only (no move data is used)
-export function analyzeCoverage(team) {
-  const byType = {};
+export function analyzeCoverage(team: Member[]): CoverageAnalysis {
+  const byType = {} as Record<TypeName, CoverageEntry>;
   for (const d of TYPES) {
     let best = 0;
-    let hitters = [];
+    let hitters: CoverageEntry["hitters"] = [];
     for (const p of team) {
       for (const a of p.types) {
         const eff = TYPE_CHART[a]?.[d] ?? 1;
@@ -129,21 +200,28 @@ export function analyzeCoverage(team) {
   };
 }
 
-export function analyzeDiversity(team) {
-  const counts = {};
+export function analyzeDiversity(team: Member[]): DiversityAnalysis {
+  const counts: Partial<Record<TypeName, number>> = {};
   team.forEach((p) => p.types.forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
   const unique = Object.keys(counts).length;
   const possible = Math.max(1, Math.min(team.length * 2, TYPES.length));
-  const duplicates = Object.entries(counts)
+  const duplicates = (Object.entries(counts) as [TypeName, number][])
     .filter(([, n]) => n > 1)
     .sort((a, b) => b[1] - a[1]);
   return { counts, unique, duplicates, score: Math.round((unique / possible) * 100) };
 }
 
-export function buildRecommendations(team, members, defense, coverage, diversity, teamSize) {
-  const recs = [];
-  const names = (list) => list.map((p) => p.name).join(", ");
-  const resistersOf = (t) =>
+export function buildRecommendations(
+  team: Member[],
+  members: MemberAnalysis[],
+  defense: DefenseAnalysis,
+  coverage: CoverageAnalysis,
+  diversity: DiversityAnalysis,
+  teamSize: number
+): Recommendation[] {
+  const recs: Recommendation[] = [];
+  const names = (list: Member[]) => list.map((p) => p.name).join(", ");
+  const resistersOf = (t: TypeName) =>
     TYPES.filter((d) => (TYPE_CHART[t]?.[d] ?? 1) < 1).map((d) => typeName(d));
 
   for (const e of [...defense.critical, ...defense.major].slice(0, 3)) {
@@ -230,10 +308,8 @@ export function buildRecommendations(team, members, defense, coverage, diversity
   return recs;
 }
 
-export function runAnalysis(teamMap, teamSize) {
-  const team = [...teamMap.values()].filter(
-    (p) => p && Array.isArray(p.types) && p.types.length > 0
-  );
+export function runAnalysis(teamMap: Team, teamSize: number): AnalysisResult {
+  const team = [...teamMap.values()].filter((p) => p && p.types.length > 0);
   const members = team.map(analyzeMember);
   const defense = analyzeDefense(members);
   const coverage = analyzeCoverage(team);
