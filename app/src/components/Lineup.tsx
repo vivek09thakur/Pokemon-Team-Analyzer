@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CoverageAnalysis } from "@/lib/analysis";
 import { TYPES } from "@/lib/constants";
-import { lineupHeight, typeName } from "@/lib/calculation";
+import { lineupHeight, formatName, typeName } from "@/lib/calculation";
 import type { Member, Team } from "@/lib/types";
 import Sprite from "./Sprite";
 
@@ -188,9 +188,15 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
                     else figRefs.current.delete(key);
                   }}
                   className={cls}
-                  title={`${member.name} · ${(member.height / 10).toFixed(1)} m · ${member.types
-                    .map((t) => typeName(t))
-                    .join(" / ")}`}
+                  title={[
+                    `${member.name} · ${(member.height / 10).toFixed(1)} m · ${member.types
+                      .map((t) => typeName(t))
+                      .join(" / ")}`,
+                    member.ability,
+                    member.item ? `@ ${formatName(member.item)}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n")}
                 >
                   <Sprite
                     pokemon={member}

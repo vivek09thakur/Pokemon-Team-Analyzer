@@ -35,6 +35,7 @@ export interface PokemonSummary {
 export interface Member extends Pokemon {
   ability: string;
   selectedMoves: string[];
+  item: string; // PokeAPI item slug, "" for none
 }
 
 export type Team = Map<number, Member>;

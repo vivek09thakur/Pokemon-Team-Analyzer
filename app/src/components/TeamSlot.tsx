@@ -2,8 +2,9 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { MOVE_SLOTS } from "@/lib/constants";
-import { padId, slotSpriteScale, typeColor } from "@/lib/calculation";
+import { formatName, padId, slotSpriteScale, typeColor } from "@/lib/calculation";
 import { fetchMoveType, knownMoveType } from "@/lib/pokeapi";
+import { itemSprite } from "@/lib/showdown";
 import type { Member } from "@/lib/types";
 import Sprite from "./Sprite";
 import { Icon, TypeChip } from "./ui";
@@ -16,6 +17,8 @@ interface Props {
   onAbilityChange: (index: number, ability: string) => void;
   onOpenMove: (index: number, moveIndex: number) => void;
   onMove: (from: number, to: number) => void;
+  onSuggest: (index: number) => void;
+  onOpenItem: (index: number) => void;
 }
 
 const DND_TYPE = "application/x-team-slot";
@@ -80,6 +83,8 @@ const TeamSlot = memo(function TeamSlot({
   onAbilityChange,
   onOpenMove,
   onMove,
+  onSuggest,
+  onOpenItem,
 }: Props) {
   const dnd = useSlotDnd(index, onMove, !!member);
   const dndClass = `${dnd.over ? " is-drop-target" : ""}${dnd.dragging ? " is-dragging" : ""}`;
@@ -124,7 +129,24 @@ const TeamSlot = memo(function TeamSlot({
           <div className="slot-name" title={member.name}>
             {member.name}
           </div>
-          <span className="label-sm">#{padId(member.id)}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="label-sm">#{padId(member.id)}</span>
+            <button
+              type="button"
+              className={`slot-item${member.item ? "" : " is-empty"}`}
+              title={member.item ? formatName(member.item) : "Held item"}
+              aria-label="Held item"
+              onClick={() => onOpenItem(index)}
+            >
+              {member.item ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={itemSprite(member.item)} alt="" width={20} height={20} className="item-sprite" />
+              ) : (
+                <Icon name="backpack" size={14} />
+              )}
+              <span className="truncate">{member.item ? formatName(member.item) : "Item"}</span>
+            </button>
+          </div>
         </div>
         <div className="slot-meta">
           <button
@@ -134,6 +156,14 @@ const TeamSlot = memo(function TeamSlot({
             onClick={() => onRemove(index)}
           >
             <Icon name="close" size={14} />
+          </button>
+          <button
+            className="suggest-btn"
+            aria-label="Suggest a set"
+            title="Suggest moves, ability & item"
+            onClick={() => onSuggest(index)}
+          >
+            <Icon name="auto_awesome" size={14} />
           </button>
           {[...member.types].reverse().map((t) => (
             <TypeChip key={t} type={t} small />

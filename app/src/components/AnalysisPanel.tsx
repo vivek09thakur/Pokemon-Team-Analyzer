@@ -42,10 +42,14 @@ export default function AnalysisPanel({ result, updatedAt }: Props) {
       </div>
 
       <div className="md-card p-4">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           <Icon name="groups" className="text-primary" />
           <h3 className="title-md">Member breakdown</h3>
         </div>
+        <p className="body-sm mb-3 text-on-surface-variant">
+          The badge is a <b>typing</b> score (0–100): how many attacking types each member resists versus is
+          weak to. It ignores stats, so a well-typed Charmander can outscore a 4×-weak legendary.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-3">
           {result.members.map((m) => (
             <MemberCard key={`${m.pokemon.id}-${m.pokemon.name}`} m={m} />
@@ -292,7 +296,13 @@ function MemberCard({ m }: { m: MemberAnalysis }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className="title-sm truncate">{m.pokemon.name}</span>
-          <span className={`label-sm px-2 py-0.5 rounded-full ${tone}`} title="Defensive score">
+          <span
+            className={`label-sm px-2 py-0.5 rounded-full ${tone} inline-flex items-center gap-1`}
+            title={`Typing score: ${m.groups.immune.length} immunities, ${
+              m.groups.quadResist.length + m.groups.resist.length
+            } resistances, ${m.groups.weak.length + m.groups.quadWeak.length} weaknesses`}
+          >
+            <Icon name="shield" size={12} />
             {m.score}
           </span>
         </div>

@@ -610,6 +610,69 @@
     background: rgba(242, 184, 181, 0.32);
     outline: none;
   }
+  /* Suggest-set: same footprint as remove, primary tint */
+  .suggest-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--md-shape-xs);
+    border: 1px dashed var(--md-primary);
+    color: var(--md-primary);
+    background: color-mix(in srgb, var(--md-primary) 14%, transparent);
+    transition: background-color 0.15s, border-style 0.15s;
+  }
+  .suggest-btn:hover,
+  .suggest-btn:focus-visible {
+    border-style: solid;
+    background: color-mix(in srgb, var(--md-primary) 26%, transparent);
+    outline: none;
+  }
+  /* Held-item chip under the dex number */
+  .slot-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    max-width: 120px;
+    padding: 0 6px 0 2px;
+    border-radius: var(--md-shape-xs);
+    background: var(--md-surface-container-high);
+    color: var(--md-on-surface);
+    font: 500 11px/16px var(--sans);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    text-align: left;
+    transition: background-color 0.15s;
+  }
+  .slot-item .item-sprite {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+  .slot-item.is-empty {
+    padding-left: 5px;
+    color: var(--md-on-surface-variant);
+    font-weight: 400;
+    border: 1px dashed var(--md-outline-variant);
+    background: transparent;
+  }
+  .slot-item:hover {
+    background: var(--md-surface-container-highest);
+  }
+  .item-sprite {
+    width: 24px;
+    height: 24px;
+    image-rendering: pixelated;
+    object-fit: contain;
+  }
+  /* Set cards in the suggestion dialog */
+  .set-card {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--md-shape-md);
+  }
   .slot-select {
     appearance: none;
     -webkit-appearance: none;

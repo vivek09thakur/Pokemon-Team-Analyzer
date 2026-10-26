@@ -4,12 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { runAnalysis } from "@/lib/analysis";
 import { MOVE_SLOTS } from "@/lib/constants";
 import { loadPokemonList } from "@/lib/pokeapi";
+import { prefetchSets, type SuggestedSet } from "@/lib/showdown";
 import type { Member, Pokemon, Team } from "@/lib/types";
 import AddPokemonDialog from "./AddPokemonDialog";
 import AnalysisPanel from "./AnalysisPanel";
+import ItemPickerDialog from "./ItemPickerDialog";
 import Lineup from "./Lineup";
 import MovePickerDialog from "./MovePickerDialog";
 import RecommendationsDialog from "./RecommendationsDialog";
+import SetPickerDialog from "./SetPickerDialog";
 import { Brand, Controls, Drawer, ThemeToggle } from "./Shell";
 import TeamSlot from "./TeamSlot";
 import { Icon } from "./ui";
@@ -20,11 +23,14 @@ export default function TeamAnalyzer() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [addSlot, setAddSlot] = useState<number | null>(null);
   const [moveTarget, setMoveTarget] = useState<{ slot: number; moveIndex: number } | null>(null);
+  const [setTarget, setSetTarget] = useState<number | null>(null);
+  const [itemTarget, setItemTarget] = useState<number | null>(null);
   const [recsOpen, setRecsOpen] = useState(false);
 
-  // Warm the species list in the background so the first search is fast
+  // Warm the species list and set data in the background so the first search/suggest is fast
   useEffect(() => {
     loadPokemonList().catch(() => {});
+    prefetchSets();
   }, []);
 
   // Analysis is cheap (18 types × ≤6 members), so it re-runs on every team change
@@ -62,6 +68,7 @@ export default function TeamAnalyzer() {
         ...pokemon,
         ability: pokemon.abilities[0]?.name || "",
         selectedMoves: Array(MOVE_SLOTS).fill(""),
+        item: "",
       };
       updateTeam((t) => t.set(addSlot, member));
       setAddSlot(null);
@@ -133,6 +140,38 @@ export default function TeamAnalyzer() {
     [moveTarget, updateTeam]
   );
 
+  // Apply a Smogon set: moves, ability (if the species has it) and item
+  const applySet = useCallback(
+    (set: Pick<SuggestedSet, "moves" | "ability" | "item">) => {
+      if (setTarget === null) return;
+      updateTeam((t) => {
+        const m = t.get(setTarget);
+        if (!m) return;
+        const selectedMoves = Array.from({ length: MOVE_SLOTS }, (_, i) => set.moves[i] || "");
+        t.set(setTarget, {
+          ...m,
+          selectedMoves,
+          ability: set.ability ?? m.ability,
+          item: set.item ?? m.item,
+        });
+      });
+      setSetTarget(null);
+    },
+    [setTarget, updateTeam]
+  );
+
+  const pickItem = useCallback(
+    (slug: string) => {
+      if (itemTarget === null) return;
+      updateTeam((t) => {
+        const m = t.get(itemTarget);
+        if (m) t.set(itemTarget, { ...m, item: slug });
+      });
+      setItemTarget(null);
+    },
+    [itemTarget, updateTeam]
+  );
+
   const moveDialogTarget = useMemo(() => {
     if (!moveTarget) return null;
     const member = team.get(moveTarget.slot);
@@ -143,7 +182,11 @@ export default function TeamAnalyzer() {
   const closeAdd = useCallback(() => setAddSlot(null), []);
   const closeMove = useCallback(() => setMoveTarget(null), []);
   const closeRecs = useCallback(() => setRecsOpen(false), []);
+  const closeSet = useCallback(() => setSetTarget(null), []);
+  const closeItem = useCallback(() => setItemTarget(null), []);
   const openMove = useCallback((slot: number, moveIndex: number) => setMoveTarget({ slot, moveIndex }), []);
+  const setMember = setTarget !== null ? team.get(setTarget) ?? null : null;
+  const itemMember = itemTarget !== null ? team.get(itemTarget) ?? null : null;
 
   const controlsProps = {
     teamSize,
@@ -193,6 +236,8 @@ export default function TeamAnalyzer() {
                       onAbilityChange={setAbility}
                       onOpenMove={openMove}
                       onMove={moveMember}
+                      onSuggest={setSetTarget}
+                      onOpenItem={setItemTarget}
                     />
                   ))}
                 </div>
@@ -230,6 +275,18 @@ export default function TeamAnalyzer() {
         open={recsOpen}
         onClose={closeRecs}
         recommendations={result?.recommendations ?? []}
+      />
+      <SetPickerDialog
+        key={setTarget === null ? "set-closed" : `set-${setTarget}`}
+        member={setMember}
+        onClose={closeSet}
+        onApply={applySet}
+      />
+      <ItemPickerDialog
+        key={itemTarget === null ? "item-closed" : `item-${itemTarget}`}
+        member={itemMember}
+        onClose={closeItem}
+        onPick={pickItem}
       />
     </div>
   );
