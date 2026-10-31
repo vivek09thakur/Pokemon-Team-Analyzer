@@ -54,6 +54,48 @@ export function displayName(slug: string) {
   return formatName(slug);
 }
 
+const SHOWDOWN_SPECIES: Record<string, string> = {
+  "mr-mime": "Mr. Mime",
+  "mime-jr": "Mime Jr.",
+  "mr-rime": "Mr. Rime",
+  farfetchd: "Farfetch'd",
+  sirfetchd: "Sirfetch'd",
+  "ho-oh": "Ho-Oh",
+  "porygon-z": "Porygon-Z",
+  "jangmo-o": "Jangmo-o",
+  "hakamo-o": "Hakamo-o",
+  "kommo-o": "Kommo-o",
+  "type-null": "Type: Null",
+  "nidoran-f": "Nidoran-F",
+  "nidoran-m": "Nidoran-M",
+  flabebe: "Flabébé",
+  "wo-chien": "Wo-Chien",
+  "chien-pao": "Chien-Pao",
+  "ting-lu": "Ting-Lu",
+  "chi-yu": "Chi-Yu",
+};
+const SHOWDOWN_FORMS: Record<string, string> = {
+  "necrozma-dusk": "Dusk-Mane",
+  "necrozma-dawn": "Dawn-Wings",
+  "zygarde-10-power-construct": "10%",
+  "zygarde-50-power-construct": "",
+};
+
+export function showdownName(slug: string, species: string, isDefault: boolean) {
+  const base = SHOWDOWN_SPECIES[species] ?? formatName(species);
+  if (isDefault || !slug.startsWith(`${species}-`)) return base;
+  const form =
+    SHOWDOWN_FORMS[slug] ??
+    slug
+      .slice(species.length + 1)
+      .replace(/-(mask|breed|plumage|standard)$/, "")
+      .replace(/^(fe)?male$/, (g) => g[0])
+      .split("-")
+      .map(capitalize)
+      .join("-");
+  return form ? `${base}-${form}` : base;
+}
+
 export const padId = (id: number) => id.toString().padStart(3, "0");
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -106,6 +148,7 @@ export function toPokemon(data: RawPokemon): Pokemon | null {
   const types = data.types.map((t) => t.type.name).filter(isTypeName);
   if (types.length === 0) return null;
 
+  const isDefault = data.is_default !== false;
   const base = {
     id: data.id,
     name: displayName(data.name),
@@ -113,7 +156,8 @@ export function toPokemon(data: RawPokemon): Pokemon | null {
     height: data.height || 10,
     // Showdown keys the default form by species (deoxys-normal → deoxys) and other forms by
     // their full name (charizard-mega-x → charizardmegax), alphanumerics only
-    showdownId: (data.is_default === false ? data.name : data.species.name).replace(/[^a-z0-9]/g, ""),
+    showdownId: (isDefault ? data.species.name : data.name).replace(/[^a-z0-9]/g, ""),
+    showdownName: showdownName(data.name, data.species.name, isDefault),
     abilities: data.abilities.map((a) => ({
       name: formatName(a.ability.name),
       hidden: a.is_hidden,

@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { runAnalysis } from "@/lib/analysis";
-import { MOVE_SLOTS } from "@/lib/constants";
+import { MOVE_SLOTS, TEAM_SIZES } from "@/lib/constants";
+import { exportTeam, importTeam } from "@/lib/paste";
 import { loadPokemonList } from "@/lib/pokeapi";
 import { prefetchSets, type SuggestedSet } from "@/lib/showdown";
 import type { Member, Pokemon, Team } from "@/lib/types";
 import AddPokemonDialog from "./AddPokemonDialog";
 import AnalysisPanel from "./AnalysisPanel";
+import ImportTeamDialog from "./ImportTeamDialog";
 import ItemPickerDialog from "./ItemPickerDialog";
 import Lineup from "./Lineup";
 import MovePickerDialog from "./MovePickerDialog";
@@ -26,6 +28,7 @@ export default function TeamAnalyzer() {
   const [setTarget, setSetTarget] = useState<number | null>(null);
   const [itemTarget, setItemTarget] = useState<number | null>(null);
   const [recsOpen, setRecsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // Warm the species list and set data in the background so the first search/suggest is fast
   useEffect(() => {
@@ -101,6 +104,24 @@ export default function TeamAnalyzer() {
     if (!confirm("Reset the entire team? This will remove all Pokémon.")) return;
     setTeam(new Map());
   }, [team.size]);
+
+  const copyTeam = useCallback(async () => {
+    const text = await exportTeam(team, teamSize);
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+  }, [team, teamSize]);
+
+  const handleImport = useCallback(
+    async (text: string) => {
+      const result = await importTeam(text, Math.max(...TEAM_SIZES));
+      if (result.members.length === 0) return result;
+      if (team.size > 0 && !confirm("Replace your current team with the imported one?")) return null;
+      setTeam(new Map(result.members.map((m, i) => [i, m])));
+      if (result.members.length > teamSize) setTeamSize(result.members.length);
+      return result;
+    },
+    [team.size, teamSize]
+  );
 
   const setAbility = useCallback(
     (index: number, ability: string) =>
@@ -182,6 +203,7 @@ export default function TeamAnalyzer() {
   const closeAdd = useCallback(() => setAddSlot(null), []);
   const closeMove = useCallback(() => setMoveTarget(null), []);
   const closeRecs = useCallback(() => setRecsOpen(false), []);
+  const closeImport = useCallback(() => setImportOpen(false), []);
   const closeSet = useCallback(() => setSetTarget(null), []);
   const closeItem = useCallback(() => setItemTarget(null), []);
   const openMove = useCallback((slot: number, moveIndex: number) => setMoveTarget({ slot, moveIndex }), []);
@@ -195,6 +217,8 @@ export default function TeamAnalyzer() {
     typeCount,
     recommendationCount: result ? result.recommendations.length : null,
     onOpenRecommendations: () => setRecsOpen(true),
+    onCopy: copyTeam,
+    onImport: () => setImportOpen(true),
     onReset: resetTeam,
   };
 
@@ -275,6 +299,12 @@ export default function TeamAnalyzer() {
         open={recsOpen}
         onClose={closeRecs}
         recommendations={result?.recommendations ?? []}
+      />
+      <ImportTeamDialog
+        key={importOpen ? "import-open" : "import-closed"}
+        open={importOpen}
+        onClose={closeImport}
+        onImport={handleImport}
       />
       <SetPickerDialog
         key={setTarget === null ? "set-closed" : `set-${setTarget}`}

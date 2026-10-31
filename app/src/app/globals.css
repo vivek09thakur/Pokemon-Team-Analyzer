@@ -832,19 +832,26 @@
     }
   }
 
-  /* Team lineup: sprites standing on a shared floor; grows to fill the column at xl */
+  /* Team lineup: sprites on a purple-tinted stage; grows to fill the column at xl */
   .lineup-card {
     display: flex;
     flex-direction: column;
   }
   .lineup {
+    --lineup-glow: #7c4dff;
+    --lineup-bg: color-mix(in srgb, var(--lineup-glow) 10%, var(--md-surface));
     flex: 1 1 auto;
     min-height: 170px;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     gap: 4px;
-    padding: 8px 0 12px;
+    padding: 8px 10px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--md-shape-md);
+    background:
+      linear-gradient(var(--lineup-bg), var(--lineup-bg)) padding-box,
+      linear-gradient(135deg, #a78bfa, var(--lineup-glow)) border-box;
   }
   @media (min-width: 1024px) {
     .lineup {
@@ -852,7 +859,7 @@
       gap: 8px;
     }
   }
-  /* Members cluster at the center; each stands in its own purple spotlight */
+  /* Members cluster at the center of the stage */
   .lineup figure {
     position: relative;
     margin: 0;
@@ -885,23 +892,13 @@
     pointer-events: none;
     overflow: visible;
   }
-  .lineup figure::before {
-    content: "";
-    position: absolute;
-    inset: auto 0 10px;
-    height: 70%;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse 60% 22px at 50% 100%, rgba(167, 139, 250, 0.55), transparent 70%),
-      radial-gradient(ellipse 80% 100% at 50% 100%, rgba(124, 77, 255, 0.4), transparent 70%);
-  }
   .lineup img {
     position: relative;
     width: auto;
     max-width: 100%;
     object-fit: contain;
     object-position: center bottom;
-    filter: drop-shadow(0 4px 10px rgba(124, 77, 255, 0.45));
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
   }
   .lineup figcaption {
     position: relative;
@@ -915,7 +912,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* Placeholder stand shown before a slot is filled: equal widths, no spotlight */
+  /* Placeholder stand shown before a slot is filled: equal widths */
   .lineup figure.lineup-empty {
     flex: 1 1 0;
     height: 100%;
@@ -929,9 +926,6 @@
     font-weight: 500;
     opacity: 0.7;
   }
-  .lineup figure.lineup-empty::before {
-    content: none;
-  }
   /* Flying types hover above the floor; caption stays on the baseline */
   .lineup figure.is-flying img {
     position: relative;
@@ -944,10 +938,6 @@
     bottom: 18%;
     animation: hover-bob 3.2s ease-in-out infinite;
     will-change: transform;
-  }
-  .lineup figure.is-flying::before {
-    /* Spotlight pool stays on the floor, glow column reaches the hovering body */
-    height: 85%;
   }
   @keyframes hover-bob {
     0%,

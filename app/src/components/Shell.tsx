@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { TEAM_SIZES } from "@/lib/constants";
 import { Icon } from "./ui";
 
@@ -56,9 +56,48 @@ export interface ControlsProps {
   typeCount: number;
   recommendationCount: number | null; // null when there is nothing to recommend yet
   onOpenRecommendations: () => void;
+  onCopy: () => Promise<void>;
+  onImport: () => void;
   onReset: () => void;
   // Drawer gets stacked controls + hint; the desktop dock a single row
   variant: "drawer" | "dock";
+}
+
+function CopyTeamButton({
+  onCopy,
+  disabled,
+  className,
+}: {
+  onCopy: () => Promise<void>;
+  disabled: boolean;
+  className: string;
+}) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const copy = useCallback(async () => {
+    try {
+      await onCopy();
+      setState("copied");
+    } catch {
+      setState("failed");
+    }
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setState("idle"), 1800);
+  }, [onCopy]);
+  const label = state === "copied" ? "Copied" : state === "failed" ? "Copy failed" : "Copy team";
+  return (
+    <button
+      className={className}
+      onClick={copy}
+      disabled={disabled}
+      title="Copy the team as Showdown text"
+      aria-live="polite"
+    >
+      <Icon name={state === "copied" ? "check" : "content_copy"} />
+      <span>{label}</span>
+    </button>
+  );
 }
 
 // Same controls live in the drawer on mobile and under the slots on desktop
@@ -69,11 +108,14 @@ export function Controls({
   typeCount,
   recommendationCount,
   onOpenRecommendations,
+  onCopy,
+  onImport,
   onReset,
   variant,
 }: ControlsProps) {
   const dock = variant === "dock";
   const id = `teamSize-${variant}`;
+  const btn = `md-btn md-btn-outlined !h-9 ${dock ? "w-auto" : "w-full"}`;
   return (
     <div
       className={
@@ -128,13 +170,17 @@ export function Controls({
         </button>
       )}
 
-      <button
-        className={`md-btn md-btn-outlined !h-9 ${dock ? "w-auto ml-auto" : "w-full"}`}
-        onClick={onReset}
-      >
-        <Icon name="restart_alt" />
-        <span>Reset team</span>
-      </button>
+      <div className={dock ? "flex flex-wrap items-center gap-2 ml-auto" : "flex flex-col gap-2"}>
+        <CopyTeamButton onCopy={onCopy} disabled={memberCount === 0} className={btn} />
+        <button className={btn} onClick={onImport} aria-haspopup="dialog" title="Paste a Showdown team">
+          <Icon name="content_paste" />
+          <span>Import team</span>
+        </button>
+        <button className={btn} onClick={onReset}>
+          <Icon name="restart_alt" />
+          <span>Reset team</span>
+        </button>
+      </div>
     </div>
   );
 }

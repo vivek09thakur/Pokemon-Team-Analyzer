@@ -34,8 +34,9 @@ function packLineup(lineup: HTMLElement) {
     .sort((a, b) => heightOf(b) - heightOf(a))
     .forEach((f, i) => (f.style.zIndex = String(i + 1)));
 
-  const W = lineup.clientWidth;
-  const gap = parseFloat(getComputedStyle(lineup).gap) || 0;
+  const cs = getComputedStyle(lineup);
+  const W = lineup.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  const gap = parseFloat(cs.gap) || 0;
   const widths = figs.map((f) => f.getBoundingClientRect().width);
   const total = widths.reduce((s, w) => s + w, 0) + gap * (figs.length - 1);
   if (total <= W || figs.length < 2) return;

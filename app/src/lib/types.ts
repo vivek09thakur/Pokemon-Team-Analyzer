@@ -17,6 +17,7 @@ export interface Pokemon {
   types: TypeName[];
   height: number; // decimetres
   showdownId: string;
+  showdownName: string;
   abilities: Ability[];
   moves: Move[];
   sprite: string;
