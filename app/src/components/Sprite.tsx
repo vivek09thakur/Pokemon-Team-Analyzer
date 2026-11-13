@@ -1,12 +1,15 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { Spinner } from "@/common/components/Spinner";
 import { spriteSources, thumbSources } from "@/lib/calculation";
 import {
+  allowsCors,
   attachSpriteFit,
   handleSpriteError,
-  orderSources,
-  rememberSprite,
+  liveSources,
+  loadAnimatedSprite,
+  settledAnimatedSprite,
   type FitOptions,
 } from "@/lib/sprites";
 import type { Pokemon } from "@/lib/types";
@@ -15,30 +18,41 @@ interface Props {
   pokemon: Pick<Pokemon, "id" | "name" | "showdownId">;
   className?: string;
   style?: React.CSSProperties;
-  // When given, the visible pixels are measured and scaled to fit (see lib/sprites)
   fit?: FitOptions;
-  // Small preview: HOME render first, no game-sprite fallback walk
   thumb?: boolean;
+  shiny?: boolean;
 }
 
-// <img> with the sprite fallback chain and optional pixel-accurate fitting
 const Sprite = forwardRef<HTMLImageElement, Props>(function Sprite(
-  { pokemon, className = "", style, fit, thumb = false },
+  { pokemon, className = "", style, fit, thumb = false, shiny = false },
   ref
 ) {
   const imgRef = useRef<HTMLImageElement>(null);
   useImperativeHandle(ref, () => imgRef.current as HTMLImageElement);
-  const memoKey = `${thumb ? "thumb" : "full"}:${pokemon.id}`;
-  const [primary, ...fallbacks] = orderSources(
-    memoKey,
-    thumb ? thumbSources(pokemon) : spriteSources(pokemon)
+  const [, setTick] = useState(0);
+  const animated = thumb ? null : settledAnimatedSprite(pokemon.id, shiny);
+  const loading = animated === undefined;
+  const [primary, ...fallbacks] = liveSources(
+    thumb
+      ? thumbSources(pokemon)
+      : [...(animated ? [animated] : []), ...spriteSources(pokemon, shiny)]
   );
 
-  // Latest options without re-attaching on every render
+  useEffect(() => {
+    if (!loading) return;
+    let live = true;
+    loadAnimatedSprite(pokemon.id, shiny).then(() => {
+      if (live) setTick((n) => n + 1);
+    });
+    return () => {
+      live = false;
+    };
+  }, [loading, pokemon.id, shiny]);
+
   const fitRef = useRef(fit);
   fitRef.current = fit;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const img = imgRef.current;
     if (!img || !fitRef.current) return;
     return attachSpriteFit(img, {
@@ -49,11 +63,22 @@ const Sprite = forwardRef<HTMLImageElement, Props>(function Sprite(
       },
       onFit: () => fitRef.current?.onFit?.(),
     });
-    // Re-attach only when the sprite identity changes
-  }, [pokemon.id, pokemon.showdownId]);
+  }, [pokemon.id, pokemon.showdownId, loading]);
+
+  if (loading) {
+    return (
+      <span
+        className={`inline-flex items-center justify-center aspect-square max-w-full ${className}`}
+        style={style}
+        role="status"
+        aria-label={`Loading ${pokemon.name}`}
+      >
+        <Spinner size={28} />
+      </span>
+    );
+  }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       ref={imgRef}
       key={`${pokemon.id}:${pokemon.showdownId}`}
@@ -61,10 +86,12 @@ const Sprite = forwardRef<HTMLImageElement, Props>(function Sprite(
       alt={pokemon.name}
       className={`sprite-3d ${className}`}
       style={style}
+      crossOrigin={allowsCors(primary) ? "anonymous" : undefined}
+      loading={thumb ? "lazy" : "eager"}
+      decoding="async"
       data-id={pokemon.id}
       data-fallbacks={fallbacks.join("|")}
       onError={handleSpriteError}
-      onLoad={(e) => rememberSprite(memoKey, e.currentTarget.currentSrc)}
       draggable={false}
     />
   );

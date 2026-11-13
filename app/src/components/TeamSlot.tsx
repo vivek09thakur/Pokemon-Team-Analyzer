@@ -7,7 +7,8 @@ import { fetchMoveType, knownMoveType } from "@/lib/pokeapi";
 import { itemSprite } from "@/lib/showdown";
 import type { Member } from "@/lib/types";
 import Sprite from "./Sprite";
-import { Icon, TypeChip } from "./ui";
+import { Icon } from "@/common/components/Icon";
+import { TypeChip } from "./TypeChip";
 
 interface Props {
   index: number;
@@ -19,16 +20,15 @@ interface Props {
   onMove: (from: number, to: number) => void;
   onSuggest: (index: number) => void;
   onOpenItem: (index: number) => void;
+  onToggleShiny: (index: number) => void;
 }
 
 const DND_TYPE = "application/x-team-slot";
 
-// Native HTML5 DnD: no library, no per-frame JS; the browser renders the drag image and we only
-// toggle a class on the hovered slot. Drop swaps the two slots (or moves into an empty one).
 function useSlotDnd(index: number, onMove: (from: number, to: number) => void, draggable: boolean) {
   const [over, setOver] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const depth = useRef(0); // dragenter/leave fire for every child; count them
+  const depth = useRef(0);
 
   return {
     over,
@@ -37,7 +37,6 @@ function useSlotDnd(index: number, onMove: (from: number, to: number) => void, d
       draggable,
       onDragStart: (e: React.DragEvent) => {
         if (!draggable) return;
-        // Dragging from a control would swallow its click/select; only the card body drags
         if ((e.target as HTMLElement).closest("select, button")) {
           e.preventDefault();
           return;
@@ -59,7 +58,7 @@ function useSlotDnd(index: number, onMove: (from: number, to: number) => void, d
       },
       onDragOver: (e: React.DragEvent) => {
         if (!e.dataTransfer.types.includes(DND_TYPE)) return;
-        e.preventDefault(); // required to allow drop
+        e.preventDefault();
         e.dataTransfer.dropEffect = "move";
       },
       onDrop: (e: React.DragEvent) => {
@@ -74,7 +73,6 @@ function useSlotDnd(index: number, onMove: (from: number, to: number) => void, d
   };
 }
 
-// Memoised: a team change only re-renders the slots whose member object actually changed
 const TeamSlot = memo(function TeamSlot({
   index,
   member,
@@ -85,6 +83,7 @@ const TeamSlot = memo(function TeamSlot({
   onMove,
   onSuggest,
   onOpenItem,
+  onToggleShiny,
 }: Props) {
   const dnd = useSlotDnd(index, onMove, !!member);
   const dndClass = `${dnd.over ? " is-drop-target" : ""}${dnd.dragging ? " is-dragging" : ""}`;
@@ -139,7 +138,6 @@ const TeamSlot = memo(function TeamSlot({
               onClick={() => onOpenItem(index)}
             >
               {member.item ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img src={itemSprite(member.item)} alt="" width={20} height={20} className="item-sprite" />
               ) : (
                 <Icon name="backpack" size={14} />
@@ -164,6 +162,15 @@ const TeamSlot = memo(function TeamSlot({
             onClick={() => onSuggest(index)}
           >
             <Icon name="auto_awesome" size={14} />
+          </button>
+          <button
+            className={`shiny-btn${member.shiny ? " is-on" : ""}`}
+            aria-label="Shiny"
+            aria-pressed={!!member.shiny}
+            title={member.shiny ? "Shiny: on" : "Shiny: off"}
+            onClick={() => onToggleShiny(index)}
+          >
+            <Icon name="star" size={14} filled={!!member.shiny} />
           </button>
           {[...member.types].reverse().map((t) => (
             <TypeChip key={t} type={t} small />
@@ -193,8 +200,8 @@ function SlotSprite({ member, flying }: { member: Member; flying: boolean }) {
     <div ref={boxRef} className={`slot-sprite-box${flying ? " is-flying" : ""}`}>
       <Sprite
         pokemon={member}
+        shiny={member.shiny}
         style={{ height: `${slotSpriteScale(member)}%` }}
-        // Target = the %-of-box height the sprite already has; never wider than the box
         fit={{ height: null, maxWidth: () => boxRef.current?.clientWidth ?? 0 }}
       />
     </div>
@@ -212,7 +219,6 @@ function MoveButton({
 }) {
   const slug = member.selectedMoves[moveIndex] || "";
   const move = member.moves.find((m) => m.slug === slug);
-  // Known types resolve at render; unknown ones are fetched and land in `fetched`
   const [fetched, setFetched] = useState<{ slug: string; type: string | null } | null>(null);
   const type = slug ? knownMoveType(slug) ?? (fetched?.slug === slug ? fetched.type : null) : null;
 
@@ -220,7 +226,6 @@ function MoveButton({
     if (!slug || knownMoveType(slug)) return;
     let live = true;
     fetchMoveType(slug).then((t) => {
-      // User may have changed the pick while the request was in flight
       if (live) setFetched({ slug, type: t });
     });
     return () => {

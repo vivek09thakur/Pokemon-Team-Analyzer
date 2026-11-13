@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import Dialog from "@/common/components/Dialog";
+import { Icon } from "@/common/components/Icon";
+import { useAutoFocus } from "@/common/hooks/useAutoFocus";
 import type { ImportResult } from "@/lib/paste";
-import Dialog from "./Dialog";
-import { Icon } from "./ui";
 
 interface Props {
   open: boolean;
@@ -32,11 +33,7 @@ export default function ImportTeamDialog({ open, onClose, onImport }: Props) {
   const [phase, setPhase] = useState<Phase>({ kind: "edit" });
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const t = window.setTimeout(() => inputRef.current?.focus(), 100);
-    return () => window.clearTimeout(t);
-  }, [open]);
+  useAutoFocus(inputRef, open, 100);
 
   const working = phase.kind === "working";
 

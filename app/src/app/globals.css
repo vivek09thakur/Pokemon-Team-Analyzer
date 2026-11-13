@@ -1,9 +1,7 @@
 ﻿@import "tailwindcss";
 
-/* Dark mode is toggled via .dark on <html> (seeded from prefers-color-scheme in the shell) */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ---------- Google M3 "classic blue" scheme ---------- */
 :root {
   --sans: Roboto, system-ui, "Segoe UI", sans-serif;
   --heading: "Google Sans", Roboto, system-ui, sans-serif;
@@ -90,7 +88,6 @@
   color-scheme: dark;
 }
 
-/* Legacy aliases still referenced by a few rules below */
 :root {
   --text: var(--md-on-surface-variant);
   --text-h: var(--md-on-surface);
@@ -98,7 +95,6 @@
   --border: var(--md-outline-variant);
 }
 
-/* Expose roles as Tailwind utilities (bg-surface, text-on-surface, border-outline, ...) */
 @theme inline {
   --color-primary: var(--md-primary);
   --color-on-primary: var(--md-on-primary);
@@ -169,7 +165,6 @@
     font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
     font-size: 24px;
     line-height: 1;
-    /* ligatures are disabled when letter-spacing is inherited */
     letter-spacing: normal;
     font-feature-settings: "liga";
     white-space: nowrap;
@@ -181,7 +176,6 @@
   }
 }
 
-/* ---------- M3 type scale ---------- */
 @utility headline-sm {
   font-size: 24px;
   line-height: 32px;
@@ -241,9 +235,7 @@
   letter-spacing: 0.5px;
 }
 
-/* ---------- M3 components ---------- */
 @layer components {
-  /* Cards */
   .md-card {
     background: var(--md-surface);
     border: 1px solid var(--md-outline-variant);
@@ -259,7 +251,6 @@
     box-shadow: var(--md-shadow-1);
   }
 
-  /* Buttons (40px, pill) */
   .md-btn {
     position: relative;
     display: inline-flex;
@@ -283,7 +274,6 @@
   .md-btn .material-symbols-rounded {
     font-size: 18px;
   }
-  /* State layer */
   .md-btn::before,
   .md-icon-btn::before,
   .md-chip-action::before {
@@ -351,7 +341,6 @@
     color: var(--md-on-error);
   }
 
-  /* Chips (32px) */
   .md-chip {
     display: inline-flex;
     align-items: center;
@@ -374,7 +363,6 @@
     overflow: hidden;
     cursor: pointer;
   }
-  /* Pok├⌐mon type chip: brand colour fill, label-medium */
   .type-chip {
     display: inline-flex;
     align-items: center;
@@ -396,7 +384,6 @@
     font-size: 11px;
   }
 
-  /* Outlined text field / select (56px) */
   .md-field {
     width: 100%;
     height: 56px;
@@ -434,7 +421,6 @@
     border-radius: var(--md-shape-sm);
   }
 
-  /* Linear progress */
   .md-progress {
     height: 8px;
     border-radius: 9999px;
@@ -448,7 +434,6 @@
     transition: width 0.6s cubic-bezier(0.2, 0, 0, 1);
   }
 
-  /* List item */
   .md-list-item {
     display: flex;
     align-items: flex-start;
@@ -480,7 +465,6 @@
     box-shadow: var(--md-shadow-3);
   }
 
-  /* Team slot: square card; sprite flexes to fill whatever space the text leaves */
   .team-slot {
     position: relative;
     display: flex;
@@ -504,7 +488,7 @@
     background: var(--md-primary-container);
   }
   .team-slot-filled {
-    background: var(--md-surface-container-lowest);
+    background: color-mix(in srgb, #7c4dff 10%, var(--md-surface));
     box-shadow: var(--md-shadow-1);
     justify-content: flex-end;
     gap: 4px;
@@ -514,7 +498,6 @@
   .team-slot-filled:active {
     cursor: grabbing;
   }
-  /* Drag-and-drop feedback: source fades, hovered target gets a primary ring */
   .team-slot.is-dragging {
     opacity: 0.4;
   }
@@ -522,7 +505,6 @@
     box-shadow: 0 0 0 2px var(--md-primary), var(--md-shadow-2);
     border-color: var(--md-primary);
   }
-  /* Controls inside a slot must not start a drag (they'd lose their own click/select) */
   .team-slot-filled select,
   .team-slot-filled button {
     cursor: pointer;
@@ -562,7 +544,6 @@
     justify-content: center;
     padding: 0 0 6px;
   }
-  /* Height is set inline from real height; width follows via contain */
   .slot-sprite-box img {
     width: auto;
     max-width: 100%;
@@ -580,7 +561,6 @@
     gap: 6px;
     width: 100%;
   }
-  /* row-reverse: the remove button (first in DOM) stays pinned top-right; chips wrap beneath it */
   .slot-meta {
     display: flex;
     flex-direction: row-reverse;
@@ -591,7 +571,6 @@
     min-width: 0;
     flex: 0 1 auto;
   }
-  /* Remove: small, dashed, light red */
   .remove-btn {
     display: inline-flex;
     align-items: center;
@@ -610,7 +589,6 @@
     background: rgba(242, 184, 181, 0.32);
     outline: none;
   }
-  /* Suggest-set: same footprint as remove, primary tint */
   .suggest-btn {
     display: inline-flex;
     align-items: center;
@@ -629,7 +607,28 @@
     background: color-mix(in srgb, var(--md-primary) 26%, transparent);
     outline: none;
   }
-  /* Held-item chip under the dex number */
+  .shiny-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--md-shape-xs);
+    border: 1px dashed var(--md-warning);
+    color: var(--md-warning);
+    background: transparent;
+    transition: background-color 0.15s, border-style 0.15s;
+  }
+  .shiny-btn:hover,
+  .shiny-btn:focus-visible {
+    border-style: solid;
+    background: color-mix(in srgb, var(--md-warning) 14%, transparent);
+    outline: none;
+  }
+  .shiny-btn.is-on {
+    border-style: solid;
+    background: color-mix(in srgb, var(--md-warning) 26%, transparent);
+  }
   .slot-item {
     display: inline-flex;
     align-items: center;
@@ -667,7 +666,6 @@
     image-rendering: pixelated;
     object-fit: contain;
   }
-  /* Set cards in the suggestion dialog */
   .set-card {
     width: 100%;
     padding: 10px 12px;
@@ -707,7 +705,6 @@
     outline: none;
     box-shadow: 0 0 0 2px var(--md-primary);
   }
-  /* Unpicked move: muted placeholder look */
   .slot-select:has(option[value=""]:checked) {
     color: var(--md-on-surface-variant);
     font-weight: 400;
@@ -721,7 +718,6 @@
     gap: 4px;
     width: 100%;
   }
-  /* Move slot button: opens the picker; background-color is set inline to the type colour */
   .slot-move {
     height: 28px;
     min-width: 0;
@@ -750,7 +746,6 @@
     border: 1px dashed var(--md-outline-variant);
     background: transparent;
   }
-  /* Picked move: solid type fill (inline), text in the page background colour */
   .slot-move-typed {
     color: var(--md-surface);
     font-weight: 600;
@@ -759,7 +754,6 @@
     filter: brightness(1.08);
   }
 
-  /* Move picker rows */
   .move-option {
     display: flex;
     align-items: center;
@@ -799,7 +793,6 @@
     justify-content: flex-end;
   }
   @media (min-width: 1024px) {
-    /* Slots stretch to fill the column height instead of staying square */
     .team-slot {
       padding: 16px;
       aspect-ratio: auto;
@@ -832,7 +825,6 @@
     }
   }
 
-  /* Team lineup: sprites on a purple-tinted stage; grows to fill the column at xl */
   .lineup-card {
     display: flex;
     flex-direction: column;
@@ -859,11 +851,9 @@
       gap: 8px;
     }
   }
-  /* Members cluster at the center of the stage */
   .lineup figure {
     position: relative;
     margin: 0;
-    /* No shrink: figure width = visible sprite width so packLineup can measure real overflow */
     flex: 0 0 auto;
     min-width: 0;
     display: flex;
@@ -912,7 +902,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* Placeholder stand shown before a slot is filled: equal widths */
   .lineup figure.lineup-empty {
     flex: 1 1 0;
     height: 100%;
@@ -926,12 +915,11 @@
     font-weight: 500;
     opacity: 0.7;
   }
-  /* Flying types hover above the floor; caption stays on the baseline */
   .lineup figure.is-flying img {
     position: relative;
     bottom: 36px;
     animation: hover-bob 3.2s ease-in-out infinite;
-    will-change: transform; /* own layer: the filtered bitmap isn't re-rasterised every frame */
+    will-change: transform;
   }
   .slot-sprite-box.is-flying img {
     position: relative;
@@ -955,7 +943,6 @@
     }
   }
 
-  /* Thin progress bar hugging the bottom edge of the search field */
   .search-progress {
     position: absolute;
     left: 8px;
@@ -996,7 +983,6 @@
   }
 }
 
-/* Smooth theme transitions (scoped: a universal rule makes every element animate on each repaint) */
 body,
 .md-card,
 .md-card-filled,
@@ -1008,7 +994,6 @@ body,
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

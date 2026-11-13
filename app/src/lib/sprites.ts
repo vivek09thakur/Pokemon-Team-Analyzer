@@ -1,6 +1,9 @@
-// Sprite measuring/fitting. Game renders are centred on a 512² canvas with transparent padding;
-// we measure the opaque bounds once per URL and scale/offset the <img> so the visible pixels are
-// exactly the requested height and sit on the baseline.
+import { fetchWithTimeout } from "@/common/lib/http";
+import { animatedSources } from "./calculation";
+import { SHOWDOWN_SPRITES } from "./constants";
+
+const HEAD_TIMEOUT_MS = 10_000;
+const ANIMATED_TIMEOUT_MS = 30_000;
 
 export interface Bounds {
   top: number;
@@ -14,6 +17,7 @@ export interface Bounds {
 const boundsCache = new Map<string, Promise<Bounds | null>>();
 
 export function spriteBounds(src: string): Promise<Bounds | null> {
+  if (!allowsCors(src)) return Promise.resolve(null);
   const hit = boundsCache.get(src);
   if (hit) return hit;
   const promise = new Promise<Bounds | null>((resolve) => {
@@ -21,7 +25,6 @@ export function spriteBounds(src: string): Promise<Bounds | null> {
     probe.crossOrigin = "anonymous";
     probe.onload = () => {
       try {
-        // Scan a 128px downsample (16× fewer pixels); bounds are scaled back to source units
         const SCAN = 128;
         const w = SCAN;
         const h = SCAN;
@@ -54,8 +57,6 @@ export function spriteBounds(src: string): Promise<Bounds | null> {
           bottom = h - 1;
         while (top < h && rows[top] === 0) top++;
         while (bottom > top && rows[bottom] === 0) bottom--;
-        // Shave thin extremities, but never more than a slice of the full box (wide fliers like
-        // Swellow have a narrow body vs. wingspan and would otherwise collapse to the wing band)
         const span = bottom - top;
         const topLimit = top + span * 0.15;
         const bottomLimit = bottom - span * 0.05;
@@ -70,10 +71,13 @@ export function spriteBounds(src: string): Promise<Bounds | null> {
           h: probe.naturalHeight,
         });
       } catch {
-        resolve(null); // no CORS: leave the sprite untrimmed
+        resolve(null);
       }
     };
-    probe.onerror = () => resolve(null);
+    probe.onerror = () => {
+      boundsCache.delete(src);
+      resolve(null);
+    };
     probe.src = src;
   });
   boundsCache.set(src, promise);
@@ -81,14 +85,11 @@ export function spriteBounds(src: string): Promise<Bounds | null> {
 }
 
 export interface FitOptions {
-  // Visible height target in px; when omitted the img's current rendered height is used once
   height?: number | null;
-  // Visible width cap in px (or a getter evaluated at fit time)
   maxWidth?: number | (() => number);
   onFit?: () => void;
 }
 
-// Apply the fit to an <img>. Returns a cleanup that detaches the load listener.
 export function attachSpriteFit(img: HTMLImageElement, opts: FitOptions): () => void {
   let disposed = false;
   const apply = async () => {
@@ -119,20 +120,63 @@ export function attachSpriteFit(img: HTMLImageElement, opts: FitOptions): () => 
   };
 }
 
-// Step an <img> through its data-fallbacks list when a source 404s
+export const allowsCors = (src: string) => !src.startsWith(SHOWDOWN_SPRITES);
+
+const dead = new Set<string>();
+
 export function handleSpriteError(e: React.SyntheticEvent<HTMLImageElement>) {
   const img = e.currentTarget;
-  const [next, ...rest] = (img.dataset.fallbacks || "").split("|").filter(Boolean);
+  dead.add(img.src);
+  const [next, ...rest] = (img.dataset.fallbacks || "").split("|").filter((s) => s && !dead.has(s));
   img.dataset.fallbacks = rest.join("|");
-  if (next) img.src = next;
+  if (!next) return;
+  if (!allowsCors(next)) img.removeAttribute("crossorigin");
+  img.src = next;
 }
 
-// Which URL in the chain actually loaded for an id, so later <img>s for the same Pokémon
-// (lineup, member card) skip straight to it instead of re-walking the 404s
-const resolved = new Map<string, string>();
-export const rememberSprite = (key: string, src: string) => resolved.set(key, src);
-export function orderSources(key: string, sources: string[]) {
-  const hit = resolved.get(key);
-  if (!hit || !sources.includes(hit)) return sources;
-  return [hit, ...sources.filter((s) => s !== hit)];
+export function liveSources(sources: string[]) {
+  const alive = sources.filter((s) => !dead.has(s));
+  return alive.length ? alive : sources.slice(-1);
+}
+
+const animated = new Map<string, Promise<string | null>>();
+const animatedSettled = new Map<string, string | null>();
+export const settledAnimatedSprite = (id: number, shiny = false) =>
+  animatedSettled.get(`${id}:${shiny}`);
+
+export function loadAnimatedSprite(id: number, shiny = false): Promise<string | null> {
+  const key = `${id}:${shiny}`;
+  const hit = animated.get(key);
+  if (hit) return hit;
+  const urls = animatedSources(id, shiny);
+  const exists = urls.map((u) =>
+    fetchWithTimeout(u, { method: "HEAD" }, HEAD_TIMEOUT_MS).then((r) => r.ok, () => false)
+  );
+  const promise = (async () => {
+    for (let i = 0; i < urls.length; i++) {
+      if (!(await exists[i])) continue;
+      const src = urls[i];
+      return new Promise<string | null>((resolve) => {
+        const probe = new Image();
+        const timer = window.setTimeout(() => resolve(null), ANIMATED_TIMEOUT_MS);
+        probe.crossOrigin = "anonymous";
+        probe.onload = () =>
+          spriteBounds(src).then(() => {
+            window.clearTimeout(timer);
+            resolve(src);
+          });
+        probe.onerror = () => {
+          window.clearTimeout(timer);
+          resolve(null);
+        };
+        probe.src = src;
+      });
+    }
+    return null;
+  })().then((src) => {
+    animatedSettled.set(key, src);
+    return src;
+  });
+  animated.set(key, promise);
+  return promise;
 }

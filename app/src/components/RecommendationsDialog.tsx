@@ -1,8 +1,8 @@
 "use client";
 
+import Dialog from "@/common/components/Dialog";
+import { Icon } from "@/common/components/Icon";
 import type { Recommendation, Tone } from "@/lib/analysis";
-import Dialog from "./Dialog";
-import { Icon } from "./ui";
 
 const TONE: Record<Tone, string> = {
   error: "text-error",

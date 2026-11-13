@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Dialog from "@/common/components/Dialog";
+import { Icon } from "@/common/components/Icon";
+import { Spinner } from "@/common/components/Spinner";
+import { useAutoFocus } from "@/common/hooks/useAutoFocus";
 import { SEARCH_LIMIT } from "@/lib/constants";
 import { padId } from "@/lib/calculation";
 import { fetchPokemon, fetchPokemonSummary, hasPokemonList, loadPokemonList } from "@/lib/pokeapi";
 import type { Pokemon, PokemonSummary } from "@/lib/types";
-import Dialog from "./Dialog";
 import Sprite from "./Sprite";
-import { Icon, TypeChip } from "./ui";
+import { TypeChip } from "./TypeChip";
 
 interface Props {
   open: boolean;
@@ -23,7 +26,6 @@ interface SearchState {
   progress: Progress;
 }
 
-// Mounted fresh per open (parent keys it by slot), so initial state is the reset state
 export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState<SearchState>({
@@ -33,20 +35,16 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
   });
   const [selected, setSelected] = useState<PokemonSummary | null>(null);
   const [adding, setAdding] = useState(false);
+  const [addFailed, setAddFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const runId = useRef(0);
 
-  useEffect(() => {
-    if (!open) return;
-    const t = window.setTimeout(() => inputRef.current?.focus(), 100);
-    return () => window.clearTimeout(t);
-  }, [open]);
+  useAutoFocus(inputRef, open, 100);
 
   const term = query.trim().toLowerCase();
   const active = term.length >= 2;
 
-  // Debounced search; a bumped runId makes superseded runs no-ops
   useEffect(() => {
     if (!open || !active) return;
     const run = runId;
@@ -90,7 +88,7 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
     }, 300);
     return () => {
       window.clearTimeout(timer);
-      if (run.current === id) run.current++; // cancel in-flight updates for this run
+      if (run.current === id) run.current++;
     };
   }, [term, active, open]);
 
@@ -100,7 +98,8 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
 
   const select = useCallback((p: PokemonSummary) => {
     setSelected(p);
-    fetchPokemon(p.slug); // warm the full record so Add is instant
+    setAddFailed(false);
+    fetchPokemon(p.slug);
     window.setTimeout(
       () => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
       0
@@ -110,9 +109,11 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
   const add = useCallback(async () => {
     if (!selected || adding) return;
     setAdding(true);
+    setAddFailed(false);
     const full = await fetchPokemon(selected.slug);
     setAdding(false);
     if (full) onAdd(full);
+    else setAddFailed(true);
   }, [selected, adding, onAdd]);
 
   const handleClose = useCallback(() => {
@@ -145,7 +146,6 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        {/* Determinate while results load; indeterminate while the species list itself loads */}
         <div
           className={`search-progress${progress ? " is-active" : ""}${indeterminate ? " is-indeterminate" : ""}`}
           role="progressbar"
@@ -160,7 +160,7 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {phase === "searching" && (
           <div className="col-span-full py-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+            <Spinner className="mx-auto mb-2" />
             <div>Searching...</div>
           </div>
         )}
@@ -214,8 +214,13 @@ export default function AddPokemonDialog({ open, onClose, onAdd }: Props) {
             </div>
             <button className="md-btn md-btn-filled" onClick={add} disabled={adding}>
               <Icon name="add" />
-              <span>{adding ? "Adding…" : "Add to team"}</span>
+              <span>{adding ? "Adding…" : addFailed ? "Retry" : "Add to team"}</span>
             </button>
+            {addFailed ? (
+              <p role="alert" className="body-sm text-error w-full">
+                Couldn&apos;t load {selected.name}. Check your connection and try again.
+              </p>
+            ) : null}
           </div>
         </div>
       )}

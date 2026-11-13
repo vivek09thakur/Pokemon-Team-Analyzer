@@ -21,8 +21,6 @@ interface Props {
   coverage: CoverageAnalysis | null;
 }
 
-// Members overflow the stage when several are tall: squeeze them together (taller ones behind)
-// by mapping their natural centres onto the stage and clamping each figure inside it.
 function packLineup(lineup: HTMLElement) {
   const figs = [...lineup.querySelectorAll<HTMLElement>("figure:not(.lineup-empty):not(.is-leaving)")];
   if (figs.length === 0) return;
@@ -41,7 +39,6 @@ function packLineup(lineup: HTMLElement) {
   const total = widths.reduce((s, w) => s + w, 0) + gap * (figs.length - 1);
   if (total <= W || figs.length < 2) return;
 
-  // Natural centres → stretched so the first/last figures touch the stage edges
   const natural: number[] = [];
   let x = 0;
   for (const w of widths) {
@@ -73,11 +70,10 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
       if (stageRef.current) packLineup(stageRef.current);
     }, 30);
   }, []);
+  useEffect(() => () => window.clearTimeout(packTimer.current), []);
 
   const wanted = useMemo(() => {
     const list: Figure[] = [];
-    // Keyed by species (plus an occurrence index for duplicates) so a drag-reorder just moves the
-    // figure instead of fading it out and back in
     const seen = new Map<number, number>();
     for (let i = 0; i < teamSize; i++) {
       const m = team.get(i);
@@ -89,8 +85,6 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
     return list;
   }, [team, teamSize]);
 
-  // Figures keyed by slot + species: unchanged members stay put, newcomers animate in,
-  // departures animate out, and packLineup eases everyone into the new positions
   const [leaving, setLeaving] = useState<Figure[]>([]);
   const [entering, setEntering] = useState<Set<string>>(() => new Set());
   const prevWanted = useRef<Figure[]>([]);
@@ -106,7 +100,6 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
     const fresh = wanted.filter((f) => !prevKeys.has(f.key));
 
     if (gone.length) {
-      // Pin the current width so it can collapse to 0 (auto → 0 doesn't animate)
       gone.forEach((f) => {
         const el = figRefs.current.get(f.key);
         if (el) {
@@ -122,7 +115,6 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
     }
     if (fresh.length) {
       setEntering((s) => new Set([...s, ...fresh.map((f) => f.key)]));
-      // Commit the entering state first so the class removal transitions
       window.setTimeout(() => {
         setEntering((s) => {
           const n = new Set(s);
@@ -142,7 +134,6 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
     return () => ro.disconnect();
   }, [schedulePack]);
 
-  // Merge live + leaving figures in slot order (leaving ones keep their place while fading)
   const figures = useMemo(() => {
     const all = [...wanted, ...leaving.filter((l) => !wanted.some((w) => w.key === l.key))];
     return all.sort((a, b) => a.slot - b.slot);
@@ -201,8 +192,8 @@ export default function Lineup({ team, teamSize, coverage }: Props) {
                 >
                   <Sprite
                     pokemon={member}
+                    shiny={member.shiny}
                     style={{ height: `${h}px` }}
-                    // Wide fliers (Swellow, Lugia) are capped at ~2.2× their height so they don't swallow the stage
                     fit={{ height: h, maxWidth: Math.max(h * 2.2, 170), onFit: schedulePack }}
                   />
                   <figcaption>{member.name}</figcaption>

@@ -1,4 +1,3 @@
-// Analysis engine: pure functions over team data. Cheap (18 types × ≤6 members), re-run on every change.
 import { TYPES, TYPE_CHART, BUCKET_WEIGHT, type Bucket, type TypeName } from "./constants";
 import { bucket, clamp, effectiveness, plural, typeName } from "./calculation";
 import type { Member, Team } from "./types";
@@ -138,7 +137,6 @@ export function analyzeDefense(members: MemberAnalysis[]): DefenseAnalysis {
   const major = entries.filter((e) => e.severity === "major").sort((a, b) => b.net - a.net);
   const resisted = entries.filter((e) => e.severity === "resisted").sort((a, b) => a.net - b.net);
 
-  // Penalties scale with how many members a type pressures; resistance bonus is capped
   let score = 100;
   let bonus = 0;
   for (const e of entries) {
@@ -151,7 +149,6 @@ export function analyzeDefense(members: MemberAnalysis[]): DefenseAnalysis {
   return { byType, critical, major, resisted, score: clamp(score) };
 }
 
-// Coverage is estimated from STAB types only (no move data is used)
 export function analyzeCoverage(team: Member[]): CoverageAnalysis {
   const byType = {} as Record<TypeName, CoverageEntry>;
   for (const d of TYPES) {

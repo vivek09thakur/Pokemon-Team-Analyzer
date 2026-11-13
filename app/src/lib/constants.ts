@@ -2,8 +2,6 @@ export const API_BASE = "https://pokeapi.co/api/v2";
 export const SHOWDOWN_SPRITES = "https://play.pokemonshowdown.com/sprites/ani";
 const POKEAPI_REPO = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
 export const POKEAPI_SPRITES = `${POKEAPI_REPO}/other`;
-// Switch-era battle sprites (webp) share one render style; each game only covers its own dex,
-// so they're tried in order until one exists for the species
 const GEN8 = `${POKEAPI_REPO}/versions/generation-viii`;
 const GEN9 = `${POKEAPI_REPO}/versions/generation-ix`;
 export const SWITCH_SPRITE_SETS = [
@@ -13,7 +11,6 @@ export const SWITCH_SPRITE_SETS = [
   `${GEN8}/brilliant-diamond-shining-pearl`,
   `${GEN9}/legends-za`,
 ];
-// Menu/box icons (png); same per-game coverage, so SV first then the rest
 export const SWITCH_ICON_SETS = [
   `${GEN9}/scarlet-violet/icons`,
   `${GEN8}/sword-shield/icons`,
@@ -22,7 +19,7 @@ export const SWITCH_ICON_SETS = [
   `${GEN8}/brilliant-diamond-shining-pearl/icons`,
 ];
 
-export const TOTAL_POKEMON = 1025; // Gen 1-9
+export const TOTAL_POKEMON = 1025;
 export const LIST_BATCH_SIZE = 400;
 export const SEARCH_LIMIT = 12;
 export const MOVE_SLOTS = 4;
@@ -60,7 +57,6 @@ export const TYPES = Object.keys(TYPE_DATA) as TypeName[];
 
 export const isTypeName = (t: string): t is TypeName => t in TYPE_DATA;
 
-// TYPE_CHART[attacking][defending] = multiplier (missing = 1)
 export const TYPE_CHART: Record<TypeName, Partial<Record<TypeName, number>>> = {
   normal: { rock: 0.5, ghost: 0, steel: 0.5 },
   fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
@@ -118,7 +114,6 @@ export const TYPE_CHART: Record<TypeName, Partial<Record<TypeName, number>>> = {
 
 export type Bucket = "immune" | "quadResist" | "resist" | "neutral" | "weak" | "quadWeak";
 
-// Score contribution of each defensive bucket when summed across a team
 export const BUCKET_WEIGHT: Record<Bucket, number> = {
   immune: -2,
   quadResist: -2,

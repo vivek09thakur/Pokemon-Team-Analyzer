@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Dialog from "@/common/components/Dialog";
+import { Icon } from "@/common/components/Icon";
+import { SearchField } from "@/common/components/SearchField";
 import { fetchMoveType, knownMoveType } from "@/lib/pokeapi";
+import { loadMoveIndex } from "@/lib/showdown";
 import type { Member } from "@/lib/types";
-import Dialog from "./Dialog";
-import { Icon, TypeChip } from "./ui";
+import { TypeChip } from "./TypeChip";
 
 interface Props {
   target: { member: Member; moveIndex: number } | null;
@@ -12,18 +15,9 @@ interface Props {
   onPick: (slug: string) => void;
 }
 
-// Mounted fresh per target (parent keys it), so the filter starts empty
 export default function MovePickerDialog({ target, onClose, onPick }: Props) {
   const [filter, setFilter] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  // Bump to re-render as lazily fetched move types arrive
   const [, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!target) return;
-    const t = window.setTimeout(() => inputRef.current?.focus(), 50);
-    return () => window.clearTimeout(t);
-  }, [target]);
 
   const member = target?.member;
   const moveIndex = target?.moveIndex ?? 0;
@@ -38,15 +32,20 @@ export default function MovePickerDialog({ target, onClose, onPick }: Props) {
     [member, q]
   );
 
-  // Resolve type chips lazily for the first screenful so the list opens instantly
   useEffect(() => {
     if (!target) return;
     let live = true;
-    matches.slice(0, 30).forEach(async (m) => {
-      if (knownMoveType(m.slug)) return;
-      const type = await fetchMoveType(m.slug);
-      if (live && type) setTick((n) => n + 1);
-    });
+    loadMoveIndex()
+      .catch(() => null)
+      .then(() => {
+        if (!live) return;
+        setTick((n) => n + 1);
+        matches.slice(0, 30).forEach(async (m) => {
+          if (knownMoveType(m.slug)) return;
+          const type = await fetchMoveType(m.slug);
+          if (live && type) setTick((n) => n + 1);
+        });
+      });
     return () => {
       live = false;
     };
@@ -60,24 +59,7 @@ export default function MovePickerDialog({ target, onClose, onPick }: Props) {
       subtitle={member?.name}
       maxWidth="max-w-md"
       bodyClassName="overflow-y-auto px-3 pb-2"
-      toolbar={
-        <div className="px-6 pb-3 relative">
-          <Icon
-            name="search"
-            size={20}
-            className="absolute left-9 top-1/2 -translate-y-1/2 -mt-1.5 pointer-events-none"
-          />
-          <input
-            ref={inputRef}
-            type="text"
-            className="md-field md-field-sm !pl-10"
-            placeholder="Search moves"
-            autoComplete="off"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-      }
+      toolbar={<SearchField value={filter} onChange={setFilter} placeholder="Search moves" />}
       footer={
         <div className="px-4 py-3 flex justify-end border-t border-outline-variant">
           <button className="md-btn md-btn-text" onClick={() => onPick("")}>

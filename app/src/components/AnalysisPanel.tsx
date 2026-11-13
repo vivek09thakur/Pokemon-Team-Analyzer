@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon } from "@/common/components/Icon";
 import type { AnalysisResult, DefenseEntry, MemberAnalysis, Severity } from "@/lib/analysis";
 import { TYPES } from "@/lib/constants";
 import type { Member } from "@/lib/types";
 import Sprite from "./Sprite";
-import { Icon, TypeChip } from "./ui";
+import { TypeChip } from "./TypeChip";
 
 interface Props {
   result: AnalysisResult | null;
@@ -63,7 +64,6 @@ export default function AnalysisPanel({ result, updatedAt }: Props) {
 const CIRC = 2 * Math.PI * 42;
 
 function ScoreCard({ result: r, updatedAt }: { result: AnalysisResult; updatedAt: string }) {
-  // Animate from 0 on first paint, then between values
   const [shown, setShown] = useState({ overall: 0, coverage: 0, defense: 0, diversity: 0 });
   useEffect(() => {
     const id = requestAnimationFrame(() =>
@@ -211,7 +211,6 @@ const BADGE_TEXT: Record<Severity, string> = {
   neutral: "Covered",
 };
 
-// One row per attacking type that hits someone: who it hits, and who can switch in
 function ThreatList({ result }: { result: AnalysisResult }) {
   const threats = Object.values(result.defense.byType)
     .filter((e) => e.weakBy.length > 0)

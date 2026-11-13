@@ -17,7 +17,8 @@ import RecommendationsDialog from "./RecommendationsDialog";
 import SetPickerDialog from "./SetPickerDialog";
 import { Brand, Controls, Drawer, ThemeToggle } from "./Shell";
 import TeamSlot from "./TeamSlot";
-import { Icon } from "./ui";
+import { ErrorBoundary } from "@/common/components/ErrorBoundary";
+import { Icon } from "@/common/components/Icon";
 
 export default function TeamAnalyzer() {
   const [team, setTeam] = useState<Team>(() => new Map());
@@ -30,23 +31,23 @@ export default function TeamAnalyzer() {
   const [recsOpen, setRecsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Warm the species list and set data in the background so the first search/suggest is fast
   useEffect(() => {
     loadPokemonList().catch(() => {});
     prefetchSets();
   }, []);
 
-  // Analysis is cheap (18 types × ≤6 members), so it re-runs on every team change
-  const analysis = useMemo(
-    () =>
-      team.size
-        ? {
-            result: runAnalysis(team, teamSize),
-            updatedAt: `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
-          }
-        : { result: null, updatedAt: "" },
-    [team, teamSize]
-  );
+  const analysis = useMemo(() => {
+    if (!team.size) return { result: null, updatedAt: "" };
+    try {
+      return {
+        result: runAnalysis(team, teamSize),
+        updatedAt: `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      };
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      return { result: null, updatedAt: "" };
+    }
+  }, [team, teamSize]);
   const { result, updatedAt } = analysis;
 
   const typeCount = useMemo(() => {
@@ -66,7 +67,6 @@ export default function TeamAnalyzer() {
   const addPokemon = useCallback(
     (pokemon: Pokemon) => {
       if (addSlot === null) return;
-      // Per-slot copy so ability/move picks don't leak into the shared cache entry
       const member: Member = {
         ...pokemon,
         ability: pokemon.abilities[0]?.name || "",
@@ -132,7 +132,15 @@ export default function TeamAnalyzer() {
     [updateTeam]
   );
 
-  // Drag-and-drop: swap two slots (moving into an empty slot just relocates)
+  const toggleShiny = useCallback(
+    (index: number) =>
+      updateTeam((t) => {
+        const m = t.get(index);
+        if (m) t.set(index, { ...m, shiny: !m.shiny });
+      }),
+    [updateTeam]
+  );
+
   const moveMember = useCallback(
     (from: number, to: number) =>
       updateTeam((t) => {
@@ -161,7 +169,6 @@ export default function TeamAnalyzer() {
     [moveTarget, updateTeam]
   );
 
-  // Apply a Smogon set: moves, ability (if the species has it) and item
   const applySet = useCallback(
     (set: Pick<SuggestedSet, "moves" | "ability" | "item">) => {
       if (setTarget === null) return;
@@ -229,7 +236,6 @@ export default function TeamAnalyzer() {
       </Drawer>
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar (mobile only) */}
         <header className="md-top-bar lg:hidden px-2 flex items-center gap-1 border-b border-outline-variant">
           <button className="md-icon-btn" aria-label="Open menu" onClick={() => setDrawerOpen(true)}>
             <Icon name="menu" />
@@ -239,7 +245,6 @@ export default function TeamAnalyzer() {
 
         <main className="flex-1 overflow-auto p-3 lg:p-0">
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] gap-4 lg:gap-0 items-start lg:items-stretch lg:min-h-full">
-            {/* Left column: nav + team + controls; fills the viewport height on lg+ */}
             <div className="flex flex-col gap-3 lg:gap-0 w-full max-w-[720px] mx-auto lg:max-w-none lg:mx-0 lg:self-start lg:sticky lg:top-0 lg:h-dvh">
               <div className="hidden lg:flex items-center gap-3 px-4 h-14 shrink-0 border-b border-outline-variant">
                 <Brand compact />
@@ -251,18 +256,20 @@ export default function TeamAnalyzer() {
               <section className="lg:flex-1 lg:min-h-0 lg:p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 lg:h-full lg:auto-rows-fr">
                   {Array.from({ length: teamSize }, (_, i) => (
-                    <TeamSlot
-                      key={i}
-                      index={i}
-                      member={team.get(i)}
-                      onOpenAdd={setAddSlot}
-                      onRemove={removePokemon}
-                      onAbilityChange={setAbility}
-                      onOpenMove={openMove}
-                      onMove={moveMember}
-                      onSuggest={setSetTarget}
-                      onOpenItem={setItemTarget}
-                    />
+                    <ErrorBoundary key={i} title={`Slot ${i + 1} failed to display`}>
+                      <TeamSlot
+                        index={i}
+                        member={team.get(i)}
+                        onOpenAdd={setAddSlot}
+                        onRemove={removePokemon}
+                        onAbilityChange={setAbility}
+                        onOpenMove={openMove}
+                        onMove={moveMember}
+                        onSuggest={setSetTarget}
+                        onOpenItem={setItemTarget}
+                        onToggleShiny={toggleShiny}
+                      />
+                    </ErrorBoundary>
                   ))}
                 </div>
               </section>
@@ -272,11 +279,14 @@ export default function TeamAnalyzer() {
               </div>
             </div>
 
-            {/* Right column: team display pinned, analysis scrolls beneath it */}
             <div className="md-card min-w-0 flex flex-col lg:rounded-none lg:border-0 lg:border-l lg:border-outline-variant lg:h-dvh lg:sticky lg:top-0 lg:overflow-hidden">
-              <Lineup team={team} teamSize={teamSize} coverage={result?.coverage ?? null} />
+              <ErrorBoundary title="The lineup failed to display">
+                <Lineup team={team} teamSize={teamSize} coverage={result?.coverage ?? null} />
+              </ErrorBoundary>
               <div className="flex flex-col gap-4 p-3 sm:p-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain">
-                <AnalysisPanel result={result} updatedAt={updatedAt} />
+                <ErrorBoundary title="The analysis failed to display">
+                  <AnalysisPanel result={result} updatedAt={updatedAt} />
+                </ErrorBoundary>
               </div>
             </div>
           </div>

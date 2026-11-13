@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Icon } from "@/common/components/Icon";
+import { useEscapeKey } from "@/common/hooks/useEscapeKey";
 import { TEAM_SIZES } from "@/lib/constants";
-import { Icon } from "./ui";
 
-// Theme lives on <html class="dark">, seeded before hydration by the inline script in layout.tsx
 const subscribeTheme = (cb: () => void) => {
   const mo = new MutationObserver(cb);
   mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
@@ -54,12 +54,11 @@ export interface ControlsProps {
   onTeamSize: (size: number) => void;
   memberCount: number;
   typeCount: number;
-  recommendationCount: number | null; // null when there is nothing to recommend yet
+  recommendationCount: number | null;
   onOpenRecommendations: () => void;
   onCopy: () => Promise<void>;
   onImport: () => void;
   onReset: () => void;
-  // Drawer gets stacked controls + hint; the desktop dock a single row
   variant: "drawer" | "dock";
 }
 
@@ -100,7 +99,6 @@ function CopyTeamButton({
   );
 }
 
-// Same controls live in the drawer on mobile and under the slots on desktop
 export function Controls({
   teamSize,
   onTeamSize,
@@ -194,14 +192,7 @@ export function Drawer({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   return (
     <>

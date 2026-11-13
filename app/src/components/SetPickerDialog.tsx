@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Dialog from "@/common/components/Dialog";
+import { Icon } from "@/common/components/Icon";
+import { Spinner } from "@/common/components/Spinner";
 import { formatName } from "@/lib/calculation";
 import { fallbackSet, formatLabel, itemSprite, moveInfo, suggestedSets, type SuggestedSet } from "@/lib/showdown";
 import type { Member } from "@/lib/types";
-import Dialog from "./Dialog";
-import { Icon, TypeChip } from "./ui";
+import { TypeChip } from "./TypeChip";
 
 interface Props {
   member: Member | null;
@@ -18,7 +20,6 @@ type State =
   | { phase: "ready"; sets: SuggestedSet[]; fallback: string[] | null }
   | { phase: "error" };
 
-// Mounted fresh per target (parent keys it)
 export default function SetPickerDialog({ member, onClose, onApply }: Props) {
   const [state, setState] = useState<State>({ phase: "loading" });
 
@@ -58,7 +59,7 @@ export default function SetPickerDialog({ member, onClose, onApply }: Props) {
     >
       {state.phase === "loading" && (
         <div className="py-10 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+          <Spinner className="mx-auto mb-2" />
           <div className="body-md">Looking up sets…</div>
         </div>
       )}
@@ -144,7 +145,6 @@ function SetCard({
           )}
           {item && (
             <span className="flex items-center gap-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={itemSprite(item)} alt="" width={18} height={18} className="item-sprite" />
               {formatName(item)}
             </span>

@@ -1,4 +1,5 @@
-// Smogon set data (via the pkmn mirror) and Showdown move data. Browser-only.
+import { fetchJSON } from "@/common/lib/http";
+import { readJSON, writeJSON } from "@/common/lib/storage";
 import { API_BASE } from "./constants";
 import { formatName } from "./calculation";
 import type { Pokemon } from "./types";
@@ -7,9 +8,7 @@ const SETS_BASE = "https://data.pkmn.cc/sets";
 const PS_MOVES = "https://play.pokemonshowdown.com/data/moves.json";
 const ITEM_SPRITES = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items";
 
-// Showdown ids: lowercase alphanumerics ("Will-O-Wisp" → "willowisp")
 export const psId = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-// PokeAPI slug ("King's Shield" → "kings-shield")
 export const apiSlug = (s: string) =>
   s
     .toLowerCase()
@@ -18,8 +17,6 @@ export const apiSlug = (s: string) =>
     .replace(/^-|-$/g, "");
 
 export const itemSprite = (slug: string) => `${ITEM_SPRITES}/${slug}.png`;
-
-// ---------- Moves ----------
 
 export interface MoveInfo {
   name: string;
@@ -38,20 +35,20 @@ interface PsMove {
   category: MoveInfo["category"];
 }
 
+const LARGE_FILE_TIMEOUT_MS = 45_000;
+
 export function loadMoveIndex() {
   if (moveIndex) return Promise.resolve(moveIndex);
   if (movePromise) return movePromise;
-  movePromise = fetch(PS_MOVES)
-    .then((r) => {
-      if (!r.ok) throw new Error(`moves.json ${r.status}`);
-      return r.json() as Promise<Record<string, PsMove>>;
-    })
+  movePromise = fetchJSON<Record<string, PsMove>>(PS_MOVES, LARGE_FILE_TIMEOUT_MS)
     .then((data) => {
       moveIndex = new Map(
-        Object.entries(data).map(([id, m]) => [
-          id,
-          { name: m.name, type: m.type.toLowerCase(), basePower: m.basePower, category: m.category },
-        ])
+        Object.entries(data)
+          .filter(([, m]) => typeof m?.type === "string")
+          .map(([id, m]) => [
+            id,
+            { name: m.name, type: m.type.toLowerCase(), basePower: m.basePower, category: m.category },
+          ])
       );
       return moveIndex;
     })
@@ -61,17 +58,14 @@ export function loadMoveIndex() {
   return movePromise;
 }
 
-// Synchronous once the index has loaded
 export const moveInfo = (slug: string) => moveIndex?.get(psId(slug));
-
-// ---------- Sets ----------
 
 export interface SuggestedSet {
   format: string;
   name: string;
-  moves: string[]; // PokeAPI slugs, in slot order
-  ability?: string; // formatted name matching Pokemon.abilities[].name
-  item?: string; // PokeAPI slug
+  moves: string[];
+  ability?: string;
+  item?: string;
   gen: number;
 }
 
@@ -88,11 +82,7 @@ const setFiles = new Map<number, Promise<Map<string, Record<string, Record<strin
 function loadGen(gen: number) {
   const hit = setFiles.get(gen);
   if (hit) return hit;
-  const p = fetch(`${SETS_BASE}/gen${gen}.json`)
-    .then((r) => {
-      if (!r.ok) throw new Error(`gen${gen} sets ${r.status}`);
-      return r.json() as Promise<SetsFile>;
-    })
+  const p = fetchJSON<SetsFile>(`${SETS_BASE}/gen${gen}.json`, LARGE_FILE_TIMEOUT_MS)
     .then((data) => new Map(Object.entries(data).map(([species, v]) => [psId(species), v])))
     .catch((e) => {
       console.error(e);
@@ -105,10 +95,9 @@ function loadGen(gen: number) {
 
 export const prefetchSets = () => {
   loadGen(9);
-  loadMoveIndex();
+  loadMoveIndex().catch(() => {});
 };
 
-// Competitive relevance order; VGC/doubles and odd metas last
 const FORMAT_RANK = [
   "ou", "uu", "ru", "nu", "pu", "zu", "ubers", "ubersuu", "nationaldex", "nationaldexuu",
   "nationaldexru", "nationaldexubers", "monotype", "nationaldexmonotype", "lc", "nfe",
@@ -123,7 +112,6 @@ export const formatLabel = (f: string) =>
 
 const first = <T,>(v: T | T[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-// Resolve a set's move names against the Pokémon's learnset; alternatives pick the first learnable
 function resolveMoves(raw: RawSet["moves"], learnset: Set<string>) {
   const out: string[] = [];
   for (const entry of raw) {
@@ -159,12 +147,11 @@ export async function suggestedSets(pokemon: Pokemon): Promise<SuggestedSet[]> {
         });
       }
     }
-    if (results.length) break; // newest gen that has this species wins
+    if (results.length) break;
   }
   return results.sort((a, b) => formatRank(a.format) - formatRank(b.format));
 }
 
-// No analysis available: strongest STAB per type, then the strongest coverage moves
 export async function fallbackSet(pokemon: Pokemon): Promise<string[]> {
   const idx = await loadMoveIndex();
   const scored = pokemon.moves
@@ -185,8 +172,6 @@ export async function fallbackSet(pokemon: Pokemon): Promise<string[]> {
   return picks;
 }
 
-// ---------- Held items ----------
-
 export interface HeldItem {
   slug: string;
   name: string;
@@ -202,23 +187,23 @@ let itemsPromise: Promise<HeldItem[]> | null = null;
 
 export function loadHeldItems(): Promise<HeldItem[]> {
   if (itemsPromise) return itemsPromise;
-  try {
-    const cached = localStorage.getItem(ITEMS_KEY);
-    if (cached) return (itemsPromise = Promise.resolve(JSON.parse(cached) as HeldItem[]));
-  } catch {}
+  const cached = readJSON<HeldItem[] | null>(ITEMS_KEY, null);
+  if (Array.isArray(cached) && cached.length) return (itemsPromise = Promise.resolve(cached));
+  let failed = false;
   itemsPromise = Promise.all(
     ITEM_CATEGORIES.map((c) =>
-      fetch(`${API_BASE}/item-category/${c}`)
-        .then((r) => (r.ok ? r.json() : { items: [] }))
-        .then((d: { items: { name: string }[] }) => d.items.map((i) => i.name))
-        .catch(() => [] as string[])
+      fetchJSON<{ items: { name: string }[] }>(`${API_BASE}/item-category/${c}`)
+        .then((d) => d.items.map((i) => i.name))
+        .catch(() => {
+          failed = true;
+          return [] as string[];
+        })
     )
   ).then((lists) => {
     const slugs = [...new Set(lists.flat())].sort();
     const items = slugs.map((slug) => ({ slug, name: formatName(slug) }));
-    try {
-      localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
-    } catch {}
+    if (failed || items.length === 0) itemsPromise = null;
+    else writeJSON(ITEMS_KEY, items);
     return items;
   });
   return itemsPromise;

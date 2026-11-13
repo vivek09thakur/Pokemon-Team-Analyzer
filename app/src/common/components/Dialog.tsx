@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { Icon } from "./ui";
+import { useEscapeKey } from "@/common/hooks/useEscapeKey";
+import { Icon } from "./Icon";
 
 interface Props {
   open: boolean;
@@ -11,12 +11,10 @@ interface Props {
   maxWidth?: string;
   footer?: React.ReactNode;
   children: React.ReactNode;
-  // Rendered between the header and the scrolling body (e.g. a search field)
   toolbar?: React.ReactNode;
   bodyClassName?: string;
 }
 
-// Scrim + M3 dialog; closes on backdrop click and Escape
 export default function Dialog({
   open,
   onClose,
@@ -28,14 +26,7 @@ export default function Dialog({
   bodyClassName = "px-6 pb-6 overflow-y-auto",
   children,
 }: Props) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  useEscapeKey(open, onClose);
 
   if (!open) return null;
   return (

@@ -1,4 +1,5 @@
-// PokeAPI access with in-memory + localStorage caches. Browser-only (uses localStorage).
+import { fetchJSON, fetchWithTimeout } from "@/common/lib/http";
+import { readJSON, writeJSON } from "@/common/lib/storage";
 import {
   API_BASE,
   FALLBACK_POKEMON,
@@ -7,6 +8,7 @@ import {
   TOTAL_POKEMON,
 } from "./constants";
 import { summaryOf, toPokemon, toSummary } from "./calculation";
+import { moveInfo } from "./showdown";
 import type { ListEntry, Pokemon, PokemonSummary } from "./types";
 
 let pokemonList: ListEntry[] = [];
@@ -14,76 +16,71 @@ let listPromise: Promise<ListEntry[]> | null = null;
 const pokemonCache = new Map<string, Promise<Pokemon | null>>();
 const summaryCache = new Map<string, Promise<PokemonSummary | null>>();
 
-function readJSON<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// move slug -> type name; persisted so repeat picks don't hit the API
 const moveTypeCache = new Map<string, string>(
   typeof window === "undefined"
     ? []
     : Object.entries(readJSON<Record<string, string>>(STORAGE_KEYS.moveTypes, {}))
 );
 
-export const knownMoveType = (slug: string) => moveTypeCache.get(slug);
+export const knownMoveType = (slug: string) => moveTypeCache.get(slug) ?? moveInfo(slug)?.type;
 
 export const hasPokemonList = () => pokemonList.length > 0;
 
 async function fetchFreshList(): Promise<ListEntry[]> {
-  // First page also tells us the total, which includes alternate forms (megas, Rotom, regional…)
-  // that live past the National Dex range
-  const firstRes = await fetch(`${API_BASE}/pokemon?limit=${LIST_BATCH_SIZE}&offset=0`);
-  if (!firstRes.ok) throw new Error(`HTTP error! status: ${firstRes.status}`);
-  const first = (await firstRes.json()) as { count: number; results: ListEntry[] };
+  const first = await fetchJSON<{ count: number; results: ListEntry[] }>(
+    `${API_BASE}/pokemon?limit=${LIST_BATCH_SIZE}&offset=0`
+  );
   const total = Math.max(first.count || 0, TOTAL_POKEMON);
 
+  let failed = false;
   const batches: Promise<ListEntry[]>[] = [];
   for (let offset = LIST_BATCH_SIZE; offset < total; offset += LIST_BATCH_SIZE) {
     const limit = Math.min(LIST_BATCH_SIZE, total - offset);
     batches.push(
-      fetch(`${API_BASE}/pokemon?limit=${limit}&offset=${offset}`)
-        .then((res) => {
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-          return res.json() as Promise<{ results: ListEntry[] }>;
-        })
+      fetchJSON<{ results: ListEntry[] }>(`${API_BASE}/pokemon?limit=${limit}&offset=${offset}`)
         .then((data) => data.results)
         .catch((error) => {
           console.error(`Error fetching batch at offset ${offset}:`, error);
+          failed = true;
           return [];
         })
     );
   }
-  const list = [...first.results, ...(await Promise.all(batches)).flat()].filter(
-    (p) => !UNSEARCHABLE_FORMS.test(p.name)
+  const list = [...(first.results ?? []), ...(await Promise.all(batches)).flat()].filter(
+    (p) => typeof p?.name === "string" && !UNSEARCHABLE_FORMS.test(p.name)
   );
   if (list.length === 0) throw new Error("Empty Pokémon list");
-  localStorage.setItem(STORAGE_KEYS.pokemonList, JSON.stringify(list));
+  if (!failed) writeJSON(STORAGE_KEYS.pokemonList, list);
   return list;
 }
 
-// Cosmetic/battle-only variants that just add noise to search results (forms that change
-// typing — megas, regionals, Rotom, Ogerpon masks, Crowned, Bloodmoon… — stay searchable)
 const UNSEARCHABLE_FORMS =
   /-(totem|starter|cap|cosplay|belle|libre|phd|pop-star|rock-star|battle-bond|ash|eternal|busted|school|zen|blade|10|eternamax|limited|dada|original|hangry|noice|roaming|stellar|terastal|family-of-three|three-segment)(-|$)/;
 
-// Full species list; falls back to the cached copy, then a small built-in list
+function cachedList(): ListEntry[] | null {
+  const cached = readJSON<ListEntry[] | { results: ListEntry[] } | null>(STORAGE_KEYS.pokemonList, null);
+  if (Array.isArray(cached) && cached.length) return cached;
+  if (cached && !Array.isArray(cached) && Array.isArray(cached.results) && cached.results.length)
+    return cached.results;
+  return null;
+}
+
 export function loadPokemonList(): Promise<ListEntry[]> {
   if (pokemonList.length) return Promise.resolve(pokemonList);
   if (listPromise) return listPromise;
+  const cached = cachedList();
+  if (cached) {
+    pokemonList = cached;
+    fetchFreshList()
+      .then((list) => {
+        if (list.length >= pokemonList.length) pokemonList = list;
+      })
+      .catch(() => {});
+    return Promise.resolve(cached);
+  }
   listPromise = fetchFreshList()
     .catch((error) => {
       console.error("Error loading Pokémon list:", error);
-      const cached = readJSON<ListEntry[] | { results: ListEntry[] } | null>(
-        STORAGE_KEYS.pokemonList,
-        null
-      );
-      if (Array.isArray(cached)) return cached;
-      if (cached && Array.isArray(cached.results)) return cached.results;
       return FALLBACK_POKEMON.map((name) => ({ name, url: "" }));
     })
     .then((list) => {
@@ -101,11 +98,7 @@ export function fetchPokemon(name: string): Promise<Pokemon | null> {
   const hit = pokemonCache.get(key);
   if (hit) return hit;
   const slug = key.replace(/[^a-z0-9-]/g, "");
-  const promise = fetch(`${API_BASE}/pokemon/${slug}`)
-    .then((res) => {
-      if (!res.ok) throw new Error(`Pokémon not found: ${name}`);
-      return res.json();
-    })
+  const promise = fetchJSON<Parameters<typeof toPokemon>[0]>(`${API_BASE}/pokemon/${slug}`)
     .then((data) => {
       const pokemon = toPokemon(data);
       if (!pokemon) throw new Error(`No recognised types for ${name}`);
@@ -113,22 +106,19 @@ export function fetchPokemon(name: string): Promise<Pokemon | null> {
     })
     .catch((error) => {
       console.error(`Error fetching ${name}:`, error);
-      pokemonCache.delete(key); // allow a retry later
+      pokemonCache.delete(key);
       return null;
     });
   pokemonCache.set(key, promise);
   return promise;
 }
 
-// Small per-result document for the search grid; the full /pokemon record is fetched on add.
-// A few species' form slugs differ from their pokemon slug (polteageist → polteageist-phony),
-// so a 404 here falls back to the full record.
 export function fetchPokemonSummary(name: string): Promise<PokemonSummary | null> {
   const key = name.toLowerCase();
   const hit = summaryCache.get(key);
   if (hit) return hit;
   const slug = key.replace(/[^a-z0-9-]/g, "");
-  const promise = fetch(`${API_BASE}/pokemon-form/${slug}`)
+  const promise = fetchWithTimeout(`${API_BASE}/pokemon-form/${slug}`)
     .then(async (res) => {
       if (res.ok) return toSummary(await res.json());
       if (res.status !== 404) throw new Error(`HTTP error! status: ${res.status}`);
@@ -145,18 +135,15 @@ export function fetchPokemonSummary(name: string): Promise<PokemonSummary | null
 }
 
 export async function fetchMoveType(slug: string): Promise<string | null> {
-  const hit = moveTypeCache.get(slug);
+  const hit = knownMoveType(slug);
   if (hit) return hit;
   try {
-    const res = await fetch(`${API_BASE}/move/${slug}`);
+    const res = await fetchWithTimeout(`${API_BASE}/move/${slug}`);
     if (!res.ok) return null;
     const type: string | null = (await res.json()).type?.name || null;
     if (type) {
       moveTypeCache.set(slug, type);
-      localStorage.setItem(
-        STORAGE_KEYS.moveTypes,
-        JSON.stringify(Object.fromEntries(moveTypeCache))
-      );
+      writeJSON(STORAGE_KEYS.moveTypes, Object.fromEntries(moveTypeCache));
     }
     return type;
   } catch {

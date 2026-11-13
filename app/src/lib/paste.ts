@@ -12,6 +12,7 @@ export async function exportTeam(team: Team, teamSize: number): Promise<string> 
     if (!m) continue;
     const lines = [m.item ? `${m.showdownName} @ ${formatName(m.item)}` : m.showdownName];
     if (m.ability) lines.push(`Ability: ${m.ability}`);
+    if (m.shiny) lines.push("Shiny: Yes");
     for (const slug of m.selectedMoves) {
       if (slug) lines.push(`- ${moveInfo(slug)?.name ?? formatName(slug)}`);
     }
@@ -24,6 +25,7 @@ export interface PastedSet {
   species: string;
   item?: string;
   ability?: string;
+  shiny?: boolean;
   moves: string[];
 }
 
@@ -42,7 +44,9 @@ export function parseTeam(text: string): PastedSet[] {
         if (move) cur.moves.push(move);
       } else {
         const kv = line.match(/^([A-Za-z ]+):\s*(.*)$/);
-        if (kv && kv[1].toLowerCase() === "ability") cur.ability = kv[2].trim();
+        const key = kv?.[1].toLowerCase();
+        if (kv && key === "ability") cur.ability = kv[2].trim();
+        if (kv && key === "shiny") cur.shiny = /^yes$/i.test(kv[2].trim());
       }
       continue;
     }
@@ -129,7 +133,7 @@ async function resolveSet(
     else issues.push(`${label}: unknown item “${set.item}”.`);
   }
 
-  return { ...pokemon, ability, selectedMoves, item };
+  return { ...pokemon, ability, selectedMoves, item, shiny: set.shiny };
 }
 
 export async function importTeam(text: string, max: number): Promise<ImportResult> {

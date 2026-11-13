@@ -1,4 +1,3 @@
-// Pure helpers: type math, formatting, sprite URLs. No DOM, no network.
 import {
   TYPE_CHART,
   TYPE_DATA,
@@ -24,7 +23,6 @@ export function effectiveness(attacking: TypeName, defendingTypes: TypeName[]) {
   return defendingTypes.reduce((eff, d) => eff * (row[d] ?? 1), 1);
 }
 
-// Range-based so float noise can never fall between buckets
 export function bucket(eff: number): Bucket {
   if (eff === 0) return "immune";
   if (eff < 0.5) return "quadResist";
@@ -38,7 +36,6 @@ export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const formatName = (slug: string) => slug.split("-").map(capitalize).join(" ");
 
-// "charizard-mega-x" → "Mega Charizard X", "rotom-wash" → "Rotom Wash", "venusaur-gmax" → "Gigantamax Venusaur"
 export function displayName(slug: string) {
   const [base, ...rest] = slug.split("-");
   const form = rest.join("-");
@@ -100,17 +97,16 @@ export const padId = (id: number) => id.toString().padStart(3, "0");
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-// Switch-era game sprites (SwSh first), then Pokémon HOME render, then animated Showdown gif, then artwork
-export function spriteSources(pokemon: Pick<Pokemon, "id" | "showdownId">) {
+export function spriteSources(pokemon: Pick<Pokemon, "id" | "showdownId">, shiny = false) {
   return [
-    ...SWITCH_SPRITE_SETS.map((base) => `${base}/${pokemon.id}.webp`),
-    `${POKEAPI_SPRITES}/home/${pokemon.id}.png`,
-    `${SHOWDOWN_SPRITES}/${pokemon.showdownId}.gif`,
-    `${POKEAPI_SPRITES}/official-artwork/${pokemon.id}.png`,
+    `${POKEAPI_SPRITES}/home/${shiny ? "shiny/" : ""}${pokemon.id}.png`,
+    `${SHOWDOWN_SPRITES}${shiny ? "-shiny" : ""}/${pokemon.showdownId}.gif`,
   ];
 }
 
-// Small previews: Scarlet/Violet box icons (then other Switch games), HOME render as last resort
+export const animatedSources = (id: number, shiny = false) =>
+  SWITCH_SPRITE_SETS.map((base) => `${base}/${shiny ? "shiny/" : ""}${id}.webp`);
+
 export function thumbSources(pokemon: Pick<Pokemon, "id" | "showdownId">) {
   return [
     ...SWITCH_ICON_SETS.map((base) => `${base}/${pokemon.id}.png`),
@@ -119,13 +115,11 @@ export function thumbSources(pokemon: Pick<Pokemon, "id" | "showdownId">) {
   ];
 }
 
-// Sprite height is linear in real height so members read true-to-scale; 1 m = 100px
 export function lineupHeight(pokemon: Pick<Pokemon, "height">) {
   const px = 100 * ((pokemon.height || 10) / 10);
   return Math.round(Math.max(40, Math.min(240, px)));
 }
 
-// Game renders all share one canvas, so slot sprites are sized by real height (45–100% of the box)
 export function slotSpriteScale(pokemon: Pick<Pokemon, "height">) {
   const scale = Math.sqrt((pokemon.height || 10) / 10) / 1.35;
   return Math.round(Math.max(0.45, Math.min(1, scale)) * 100);
@@ -142,9 +136,7 @@ interface RawPokemon {
   moves: { move: { name: string } }[];
 }
 
-// Shape raw PokeAPI /pokemon JSON into the app's species model
 export function toPokemon(data: RawPokemon): Pokemon | null {
-  // Drop types the chart doesn't know (e.g. "stellar", "unknown") so the engine never sees undefined
   const types = data.types.map((t) => t.type.name).filter(isTypeName);
   if (types.length === 0) return null;
 
@@ -154,8 +146,6 @@ export function toPokemon(data: RawPokemon): Pokemon | null {
     name: displayName(data.name),
     types,
     height: data.height || 10,
-    // Showdown keys the default form by species (deoxys-normal → deoxys) and other forms by
-    // their full name (charizard-mega-x → charizardmegax), alphanumerics only
     showdownId: (isDefault ? data.species.name : data.name).replace(/[^a-z0-9]/g, ""),
     showdownName: showdownName(data.name, data.species.name, isDefault),
     abilities: data.abilities.map((a) => ({
@@ -176,7 +166,6 @@ interface RawForm {
   types: { type: { name: string } }[];
 }
 
-// Shape raw PokeAPI /pokemon-form JSON into a search summary
 export function toSummary(data: RawForm): PokemonSummary | null {
   const types = data.types.map((t) => t.type.name).filter(isTypeName);
   if (types.length === 0) return null;
@@ -187,7 +176,6 @@ export function toSummary(data: RawForm): PokemonSummary | null {
     id,
     name: displayName(data.name),
     types,
-    // Default forms are keyed by species on Showdown ("deoxys", not "deoxysnormal")
     showdownId: (data.form_name ? data.name : base).replace(/[^a-z0-9]/g, ""),
   };
 }
