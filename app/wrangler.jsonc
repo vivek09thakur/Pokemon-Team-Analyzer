@@ -1,0 +1,6 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pokemon-team-analyzer",
+  "compatibility_date": "2025-11-01",
+  "pages_build_output_dir": "./out"
+}
